@@ -1,1 +1,0 @@
-# gmdg_logger

@@ -1,29 +1,18 @@
 cmake_minimum_required(VERSION 4.1.1)
 
-get_filename_component(PROJECT_FOLDER_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+project(gmdg_logger LANGUAGES CXX VERSION 0.1.0)
 
-project(${PROJECT_FOLDER_NAME} LANGUAGES CXX)
+enable_testing()
 
-add_executable(${PROJECT_NAME})
+add_subdirectory("gmdg_logger")
+add_subdirectory("gmdg_logger_gui")
+add_subdirectory("gmdg_logger_test")
 
-target_sources(${PROJECT_NAME}
-    PRIVATE
-        main.cpp
-)
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 
-target_include_directories(${PROJECT_NAME}
-    PRIVATE
-        $ENV{VENDORS_DIR}/glfw/include
-)
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}_${CPACK_PACKAGE_VERSION}")
+set(CPACK_GENERATOR "ZIP")
+set(CPACK_PACKAGE_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
 
-target_link_directories(${PROJECT_NAME} 
-    PRIVATE
-        $ENV{VENDORS_DIR}/glfw/lib
-)
-
-target_link_libraries(${PROJECT_NAME} 
-    PRIVATE
-        opengl32
-        glfw3
-        stdc++exp
-)
+include(CPack)

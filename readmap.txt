@@ -1,0 +1,14 @@
+gmdg_logger
+
+v0.1.0
+    building
+        (*) setting cmake to build a header-only library for c++ client apps
+        (*) setting cmake to build a dll for general client apps
+        (*) setting cmake to build the gui app
+        (*) setting cmake to package releases for the gmdg_logger
+        (*) setting cmake to inject app version
+	features
+		(*) logging strings with different types of severity (Error, Warning, Info, Debug)
+        check for version compatibility between library and gui app
+    gui
+        (*) filtering logs per severity

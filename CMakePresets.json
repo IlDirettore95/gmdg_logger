@@ -1,19 +1,45 @@
 {
-  "version": 3,
-  "configurePresets": [
+    "version": 4,
+    "configurePresets": [
+        {
+            "name": "Debug",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_CXX_STANDARD": "23",
+                "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+                "CMAKE_CXX_EXTENSIONS": "OFF",
+                "CMAKE_CXX_FLAGS": "-g -static-libgcc -static-libstdc++",
+                "CMAKE_EXE_LINKER_FLAGS": "-static",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/setup/debug"
+            }
+        },
+        {
+            "name": "Release",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_CXX_STANDARD": "23",
+                "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+                "CMAKE_CXX_EXTENSIONS": "OFF",
+                "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -static-libgcc -static-libstdc++",
+                "CMAKE_EXE_LINKER_FLAGS": "-static",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/setup/release"
+            }
+        }
+    ],
+    "buildPresets": [
     {
-      "name": "mingw-win",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_CXX_STANDARD": "23",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_CXX_EXTENSIONS": "OFF",
-        "CMAKE_CXX_FLAGS": "-static-libgcc -static-libstdc++",
-        "CMAKE_EXE_LINKER_FLAGS": "-static"
-      }
+      "name": "Debug",
+      "configurePreset": "Debug"
+    },
+    {
+      "name": "Release",
+      "configurePreset": "Release"
     }
   ]
 }
