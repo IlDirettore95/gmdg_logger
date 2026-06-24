@@ -12,12 +12,12 @@ namespace GMDGLogger
 {
     template <size_t N1, size_t N2>
     inline void Log(
-        LogSeverity t_level,
+        GMDGLogSeverity t_level,
         const char (&t_category)[N1],
         const char (&t_message)[N2])
     {
         GMDG_Log(
-            static_cast<uint32_t>(t_level),
+            t_level,
             t_category,
             static_cast<uint32_t>(N1 - 1),
             t_message,
@@ -39,6 +39,7 @@ namespace GMDGLogger
 
 #else
 
+#define LOG_DEBUG(cat, msg)
 #define LOG_INFO(cat, msg)
 #define LOG_WARNING(cat, msg)
 #define LOG_ERROR(cat, msg)

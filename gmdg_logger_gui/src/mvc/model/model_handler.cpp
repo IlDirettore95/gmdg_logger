@@ -2,6 +2,8 @@
 
 #include "model_handler.hpp"
 
+#include "gmdg_logger.h"
+
 using namespace GMDGLoggerGUI;
 
 void ModelHandler::Initialize()
@@ -9,15 +11,27 @@ void ModelHandler::Initialize()
     mFile.open("../gmdg_logger_test/app.log", std::ios::binary);
 
     assert(mFile);
+
+    GMDGLogFileHeader header{};
+
+    if (!mFile.read(reinterpret_cast<char*>(&header), sizeof(header)))
+    {
+        exit(-1);
+    }
+
+    mError =  GMDG_Logger_Validate_File_Header(&header);
 }
 
 void ModelHandler::Update()
 {
-    LogRecord record;
+    if (mError != GMDG_SUCCESS) return;
+
+    LogRecord record{};
 
     while (ReadRecord(record))
     {
         mLogs.emplace_back(std::move(record));
+        mThreadIDSet.emplace(mLogs.back().thread_id);
 
         std::println("[{}] [{}] [{}] : {}",
                      mLogs.back().thread_id,
@@ -31,28 +45,28 @@ void ModelHandler::Update()
 
 void ModelHandler::Shutdown() {}
 
-bool ModelHandler::ReadRecord(LogRecord& record)
+bool ModelHandler::ReadRecord(LogRecord& t_record)
 {
-    log_record_header hdr{};
+    GMDGLogRecord record{};
 
-    if (!mFile.read(reinterpret_cast<char*>(&hdr), sizeof(hdr)))
+    if (!mFile.read(reinterpret_cast<char*>(&record), sizeof(record)))
     {
         return false;
     }
 
-    record.timestamp_ns = hdr.timestamp_ns;
-    record.thread_id = hdr.thread_id;
-    record.severity     = hdr.level;
+    t_record.timestamp_ns = record.timestamp_ns;
+    t_record.thread_id    = record.thread_id;
+    t_record.severity     = record.severity;
 
-    record.category.resize(hdr.category_len);
-    record.message.resize(hdr.message_len);
+    t_record.category.resize(record.category_len);
+    t_record.message.resize(record.message_len);
 
-    if (!mFile.read(record.category.data(), static_cast<std::streamsize>(hdr.category_len)))
+    if (!mFile.read(t_record.category.data(), static_cast<std::streamsize>(record.category_len)))
     {
         return false;
     }
 
-    if (!mFile.read(record.message.data(), static_cast<std::streamsize>(hdr.message_len)))
+    if (!mFile.read(t_record.message.data(), static_cast<std::streamsize>(record.message_len)))
     {
         return false;
     }

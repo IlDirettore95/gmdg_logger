@@ -167,8 +167,10 @@ void ViewHandler::Render()
 
     RenderSeverityFilter();
     ImGui::SameLine();
+    RenderThreadIDFilter();
+    ImGui::SameLine();
     RenderAboutButton();
-
+    RenderFileHeaderValidationError();
 
     ImGui::Separator();
     RenderTable();
@@ -192,7 +194,7 @@ void ViewHandler::RenderSeverityFilter()
         {
             bool enabled = IsSeverityEnabled(severity);
 
-            if (ImGui::Checkbox(GMDG_Logger_Severity_To_String(severity), &enabled))
+            if (ImGui::Checkbox(GMDG_Logger_Severity_To_String(static_cast<GMDGLogSeverity>(severity)), &enabled))
             {
                 mSeverityMask = (mSeverityMask | (1u << severity)) * enabled + (mSeverityMask & ~(1u << severity)) * (1 - enabled);
             }
@@ -228,6 +230,72 @@ void ViewHandler::RenderAboutButton()
     }
 }
 
+void ViewHandler::RenderThreadIDFilter()
+{
+    ImGui::SetNextItemWidth(100.0f);
+    if (ImGui::BeginCombo("ThreadID", mDisabledThreadIDs.size() == 0 ? "All" : "Custom"))
+    {
+        if (ImGui::Selectable("All", mDisabledThreadIDs.size() == 0))
+        {
+            mDisabledThreadIDs.clear();
+        }
+
+        ImGui::Separator();
+
+        const std::unordered_set<uint32_t>& threadIDs = Application::GetInstance().GetModelHandler().GetThreadIDs();
+
+        for (const auto& threadID : threadIDs)
+        {
+            bool enabled = IsThreadIDEnabled(threadID);
+
+            if (ImGui::Checkbox(std::format("{0}", threadID).c_str(), &enabled))
+            {
+                if (enabled)
+                {
+                    mDisabledThreadIDs.erase(threadID);
+                }
+                else
+                {
+                    mDisabledThreadIDs.emplace(threadID);
+                }
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+}
+
+void ViewHandler::RenderFileHeaderValidationError()
+{
+    GMDGLogFileValidationResult result = Application::GetInstance().GetModelHandler().GetFileValidationError();
+    
+    if (result != GMDG_SUCCESS && result >= GMDG_SUCCESS && result <= GMDG_UNUPPORTED_FILE_HEADER)
+    {
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, { 1.0f, 0.0f, 0.0f, 1.0f });
+        switch (result)
+        {
+        case GMDG_INVALID_MAGIC:
+        {
+            ImGui::TextUnformatted("Loaded file was not a gmdg_logger file!");
+        } break;
+        case GMDG_UNUPPORTED_VERSION:
+        {
+            ImGui::TextUnformatted("Loaded file version in not supported!");
+        } break;
+        case GMDG_UNUPPORTED_FILE_HEADER:
+        {
+            ImGui::TextUnformatted("Loaded file is corrupted!");
+        } break; 
+        case GMDG_UNKNOWN:
+        {
+            ImGui::TextUnformatted("Unknwon error while loading the file!");
+        } break;        
+        }
+        ImGui::PopStyleColor();
+    }
+}
+
 void ViewHandler::RenderTable()
 {
     if (ImGui::BeginTable("logs", 5,
@@ -248,6 +316,7 @@ void ViewHandler::RenderTable()
         for (const auto& log : logs)
         {
             if (!IsSeverityEnabled(log.severity)) continue;
+            if (!IsThreadIDEnabled(log.thread_id)) continue;
 
             ImGui::TableNextRow();
 
@@ -264,7 +333,7 @@ void ViewHandler::RenderTable()
                 ImGui::Text("%u", log.thread_id);
                 
                 ImGui::TableSetColumnIndex(2);
-                ImGui::TextUnformatted(GMDG_Logger_Severity_To_String(log.severity));
+                ImGui::TextUnformatted(GMDG_Logger_Severity_To_String(static_cast<GMDGLogSeverity>(log.severity)));
                 
                 ImGui::TableSetColumnIndex(3);
                 ImGui::TextUnformatted(log.category.c_str());
@@ -295,4 +364,9 @@ ImVec4 ViewHandler::SeverityToColor(uint32_t t_severity)
 bool ViewHandler::IsSeverityEnabled(uint32_t t_severity)
 {
     return (mSeverityMask & (1u << t_severity)) != 0;
+}
+
+bool ViewHandler::IsThreadIDEnabled(uint32_t t_threadID)
+{
+    return !mDisabledThreadIDs.contains(t_threadID);
 }
