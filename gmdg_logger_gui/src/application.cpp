@@ -33,7 +33,7 @@ void Application::Run()
     while(mModelHandler.IsApplicationRunning())
     {
         mModelHandler.Update();
-        mViewHandler.Update(mControlHandler, mModelHandler);
+        mViewHandler.Update(mControlHandler);
         mControlHandler.Update(mModelHandler);
     }
 

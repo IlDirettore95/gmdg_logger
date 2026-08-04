@@ -47,36 +47,3 @@ namespace GMDGLogger
 #endif
 
 #endif
-
-// #pragma once
-
-// // this file is intended to be included in C++ applications
-
-// #ifdef GMDG_LOGGER_ENABLED
-
-// #include <print>
-// #include <format>
-
-// // enum class GMDG_Severity : int8_t
-// // {
-// //     Debug,
-// //     Info,
-// //     Warning,
-// //     Error
-// // };
-
-// template <typename... Args>
-// void GMDG_Log(std::format_string<Args...> t_format, Args... args)
-// {
-//     std::println(t_format, std::forward<Args>(args)...);
-// }
-
-
-
-// #define LOG(format, ...)    GMDG_Log(format, ##__VA_ARGS__);
-
-// #else
-
-// #define LOG(format, ...)
-
-// #endif

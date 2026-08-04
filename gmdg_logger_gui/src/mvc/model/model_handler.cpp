@@ -10,7 +10,7 @@ void ModelHandler::Initialize()
 {
     mFile.open("../gmdg_logger_test/app.log", std::ios::binary);
 
-    assert(mFile);
+    GMDG_ASSERT_WITH_MESSAGE(mFile, "failed to open log file");
 
     GMDGLogFileHeader header{};
 

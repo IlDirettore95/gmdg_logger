@@ -2,12 +2,11 @@
 
 #include <unordered_set>
 
-class GLFWwindow;
+struct GLFWwindow;
 struct ImVec4;
 
 namespace GMDGLoggerGUI
 {
-    class ModelHandler;
     class ControlHandler;
     
     class ViewHandler
@@ -17,7 +16,7 @@ namespace GMDGLoggerGUI
         ~ViewHandler() = default;
 
         void Initialize();
-        void Update(ControlHandler& t_controlHandler, const ModelHandler& t_modelHandler);
+        void Update(ControlHandler& t_controlHandler);
         void Shutdown();
 
     private:

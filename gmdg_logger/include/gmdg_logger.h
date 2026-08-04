@@ -46,7 +46,7 @@ typedef struct GMDGLogRecord
 {
     uint64_t timestamp_ns;
     uint32_t thread_id;
-    GMDGLogSeverity severity;
+    uint32_t severity;
     uint32_t category_len;
     uint32_t message_len;
 } GMDGLogRecord;
@@ -59,14 +59,20 @@ GMDGBool GMDG_Logger_Initialize(
 void GMDG_Logger_Shutdown();
 
 void GMDG_Log(
-    GMDGLogSeverity t_severity,
+    uint32_t        t_severity,
     const char*     t_category,
     uint32_t        t_category_length,
     const char*     t_message,
     uint32_t        t_message_length);
 
-const char* GMDG_Logger_Severity_To_String(GMDGLogSeverity t_severity);
-GMDGLogFileValidationResult GMDG_Logger_Validate_File_Header(const GMDGLogFileHeader* t_header);
+const char* GMDG_Logger_Severity_To_String(
+    GMDGLogSeverity t_severity);
+
+GMDGLogFileValidationResult GMDG_Logger_Validate_File_Header(
+    const GMDGLogFileHeader* t_header);
+
+// Number of records dropped so far because the async write buffer was full.
+uint64_t GMDG_Logger_GetDroppedRecordCount(void);
 
 #ifdef __cplusplus
 }

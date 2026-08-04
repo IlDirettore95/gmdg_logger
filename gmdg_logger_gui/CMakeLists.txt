@@ -42,19 +42,37 @@ target_include_directories(gmdg_logger_gui
         ${CMAKE_BINARY_DIR}/generated
 )
 
-target_link_directories(gmdg_logger_gui
-    PRIVATE
-        $ENV{VENDORS_DIR}/glfw/lib
-)
-
 target_link_libraries(gmdg_logger_gui
     PRIVATE
         opengl32
         glfw3
-        stdc++exp
     PRIVATE
         gmdg_logger
+        gmdg_asserting
 )
+
+if (GMDG_ASSERT_ENABLE)
+    target_compile_definitions(gmdg_logger_gui PRIVATE GMDG_ASSERT_ENABLE)
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    target_link_directories(gmdg_logger_gui
+        PRIVATE
+            $ENV{VENDORS_DIR}/glfw/lib-vc2022
+    )
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_directories(gmdg_logger_gui
+        PRIVATE
+            $ENV{VENDORS_DIR}/glfw/lib-mingw-w64
+    )
+
+    target_link_libraries(gmdg_logger_gui
+        PRIVATE
+            stdc++exp
+    )
+endif()
 
 target_precompile_headers(gmdg_logger_gui
     PRIVATE 

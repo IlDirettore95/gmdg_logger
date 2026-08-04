@@ -14,8 +14,14 @@ target_include_directories(gmdg_logger_test
 target_link_libraries(gmdg_logger_test 
     PRIVATE
         gmdg_logger
-        stdc++exp
 )
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_libraries(gmdg_logger_gui
+        PRIVATE
+            stdc++exp
+    )
+endif()
 
 install(TARGETS gmdg_logger_test
     RUNTIME DESTINATION ${PROJECT_NAME}/bin
@@ -32,8 +38,14 @@ target_sources(gmdg_logger_tests
 target_link_libraries(gmdg_logger_tests
     PRIVATE 
         gmdg_logger
-        stdc++exp
 )
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_libraries(gmdg_logger_gui
+        PRIVATE
+            stdc++exp
+    )
+endif()
 
 add_test(NAME gmdg_logger_tests
          COMMAND gmdg_logger_tests)

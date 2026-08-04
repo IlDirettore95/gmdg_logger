@@ -1,8 +1,57 @@
 #define GMDG_LOGGER_ENABLED
 #include "gmdg_logger.hpp"
 
+#include <cstdio>
+#include <thread>
+#include <vector>
+
+namespace
+{
+    constexpr int kThreadCount = 4;
+    constexpr int kMessagesPerThread = 20000;
+
+    void LogBurst()
+    {
+        for (int i = 0; i < kMessagesPerThread; ++i)
+        {
+            LOG_INFO("APPLICATION", "Burst log message");
+        }
+    }
+
+    // Reads app.log sequentially and returns the number of well-formed records found.
+    // Returns 0 if the file doesn't exist yet or its header doesn't validate.
+    size_t CountRecords(const char* path)
+    {
+        std::FILE* file = std::fopen(path, "rb");
+        if (!file) return 0;
+
+        GMDGLogFileHeader header{};
+        if (std::fread(&header, sizeof(header), 1, file) != 1 ||
+            GMDG_Logger_Validate_File_Header(&header) != GMDG_SUCCESS)
+        {
+            std::fclose(file);
+            return 0;
+        }
+
+        size_t count = 0;
+        GMDGLogRecord record{};
+        while (std::fread(&record, sizeof(record), 1, file) == 1)
+        {
+            if (std::fseek(file, record.category_len + record.message_len, SEEK_CUR) != 0) break;
+            ++count;
+        }
+
+        std::fclose(file);
+        return count;
+    }
+}
+
 int main()
 {
+    // app.log accumulates across runs (Initialize appends rather than truncating), so measure
+    // this run's contribution as a delta rather than assuming the file starts empty.
+    const size_t recordsBefore = CountRecords("app.log");
+
     GMDG_Logger_Initialize("app.log");
 
     LOG_DEBUG("APPLICATION", "This is a debug");
@@ -10,7 +59,29 @@ int main()
     LOG_WARNING("APPLICATION", "This is a warning");
     LOG_ERROR("APPLICATION", "This is an error");
 
+    std::vector<std::thread> threads;
+    threads.reserve(kThreadCount);
+    for (int i = 0; i < kThreadCount; ++i)
+    {
+        threads.emplace_back(LogBurst);
+    }
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
     GMDG_Logger_Shutdown();
 
-    return 0;
+    const uint64_t dropped = GMDG_Logger_GetDroppedRecordCount();
+    const size_t totalLogged = 4 + static_cast<size_t>(kThreadCount) * kMessagesPerThread;
+    const size_t recordsAfter = CountRecords("app.log");
+    const size_t recordsWritten = recordsAfter - recordsBefore;
+
+    std::printf(
+        "logged: %zu, written: %zu, dropped: %llu\n",
+        totalLogged,
+        recordsWritten,
+        static_cast<unsigned long long>(dropped));
+
+    return (recordsWritten + dropped == totalLogged) ? 0 : 1;
 }

@@ -3,3 +3,5 @@ setup/
 
 .vscode/
 .cache/
+
+docs/*.pdf

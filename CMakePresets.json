@@ -11,9 +11,8 @@
                 "CMAKE_CXX_STANDARD": "23",
                 "CMAKE_CXX_STANDARD_REQUIRED": "ON",
                 "CMAKE_CXX_EXTENSIONS": "OFF",
-                "CMAKE_CXX_FLAGS": "-g -static-libgcc -static-libstdc++",
-                "CMAKE_EXE_LINKER_FLAGS": "-static",
-                "CMAKE_INSTALL_PREFIX": "${sourceDir}/setup/debug"
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/setup/debug",
+                "GMDG_ASSERT_ENABLE": "ON"
             }
         },
         {
@@ -26,9 +25,8 @@
                 "CMAKE_CXX_STANDARD": "23",
                 "CMAKE_CXX_STANDARD_REQUIRED": "ON",
                 "CMAKE_CXX_EXTENSIONS": "OFF",
-                "CMAKE_CXX_FLAGS": "-O3 -DNDEBUG -static-libgcc -static-libstdc++",
-                "CMAKE_EXE_LINKER_FLAGS": "-static",
-                "CMAKE_INSTALL_PREFIX": "${sourceDir}/setup/release"
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/setup/release",
+                "GMDG_ASSERT_ENABLE": "OFF"
             }
         }
     ],

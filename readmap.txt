@@ -6,6 +6,7 @@ v0.1.0
         (*) setting cmake to build the gui app
         (*) setting cmake to package releases for the gmdg_logger
         (*) setting cmake to inject app version
+        - setting cmake to build a dll for general client apps
 	features
 		(*) logging strings with different types of severity (Error, Warning, Info, Debug)
         (*) check for version compatibility between library and gui app
@@ -14,8 +15,6 @@ v0.1.0
         (*) filtering logs per thread ids
 
 v0.2.0    
-    building
-        - setting cmake to build a dll for general client apps
     features
         - filtering logs per catagories
         - using thread names for filtering threads

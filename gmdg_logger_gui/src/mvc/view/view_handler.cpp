@@ -60,7 +60,7 @@ void ViewHandler::Initialize()
     ImGui::StyleColorsDark();
 }
 
-void ViewHandler::Update(ControlHandler& t_controlHandler, const ModelHandler& t_modelHandler)
+void ViewHandler::Update(ControlHandler& t_controlHandler)
 {
     // ImGui::ShowDemoWindow();
     // ImPlot::ShowDemoWindow();
@@ -290,7 +290,15 @@ void ViewHandler::RenderFileHeaderValidationError()
         case GMDG_UNKNOWN:
         {
             ImGui::TextUnformatted("Unknwon error while loading the file!");
-        } break;        
+        } break;  
+        case GMDG_SUCCESS:
+        {
+            // Nothing
+        }   break;
+        default:
+        {
+            GMDG_ASSERT_WITH_MESSAGE(false, "unhandled GMDGLogFileValidationResult: {}", static_cast<int>(result));
+        }   break;
         }
         ImGui::PopStyleColor();
     }
@@ -357,7 +365,9 @@ ImVec4 ViewHandler::SeverityToColor(uint32_t t_severity)
     case GMDG_LOG_INFO:    return { 0.0f, 1.0f, 0.0f, 1.0f };
     case GMDG_LOG_WARNING: return { 1.0f, 1.0f, 0.0f, 1.0f };
     case GMDG_LOG_ERROR:   return { 1.0f, 0.0f, 0.0f, 1.0f };
-    default:               return { 1.0f, 1.0f, 1.0f, 1.0f };
+    default:
+        GMDG_ASSERT_WITH_MESSAGE(false, "unknown severity {}", t_severity);
+        return { 1.0f, 1.0f, 1.0f, 1.0f };
     }
 }
 
