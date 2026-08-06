@@ -6,6 +6,8 @@ target_sources(gmdg_logger_gui
         src/mvc/controller/actions/action.hpp
         src/mvc/controller/actions/shutdown_action.hpp
         src/mvc/controller/actions/shutdown_action.cpp
+        src/mvc/controller/actions/open_file_action.hpp
+        src/mvc/controller/actions/open_file_action.cpp
         src/mvc/controller/control_handler.hpp
         src/mvc/controller/control_handler.cpp
 
@@ -46,6 +48,7 @@ target_link_libraries(gmdg_logger_gui
     PRIVATE
         opengl32
         glfw3
+        comdlg32
     PRIVATE
         gmdg_logger
         gmdg_asserting

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <unordered_set>
 
 struct GLFWwindow;
@@ -21,7 +22,9 @@ namespace GMDGLoggerGUI
 
     private:
         static void GLFWErrorCallback(int32_t t_error, const char* t_description);
-        void Render();
+        static bool OpenFileDialog(GLFWwindow* t_window, std::string& t_outPath);
+        void Render(ControlHandler& t_controlHandler);
+        void RenderOpenFileButton(ControlHandler& t_controlHandler);
         void RenderSeverityFilter();
         void RenderThreadIDFilter();
         void RenderAboutButton();

@@ -29,6 +29,8 @@ namespace GMDGLoggerGUI
         void Update();
         void Shutdown();
 
+        void LoadFile(const std::string& t_path);
+
         [[nodiscard]]
         inline const std::vector<LogRecord>& GetLogs() const { return mLogs; }
 
@@ -38,18 +40,22 @@ namespace GMDGLoggerGUI
         [[nodiscard]]
         inline GMDGLogFileValidationResult GetFileValidationError() const { return mError; }
 
+        [[nodiscard]]
+        inline bool HasAttemptedLoad() const { return mHasAttemptedLoad; }
+
         inline void ShutdownApplication() { mIsApplicationRunning = false; }
 
         [[nodiscard]]
         inline bool IsApplicationRunning() const { return mIsApplicationRunning; }
-        
+
     private:
         bool mIsApplicationRunning = true;
-        
+        bool mHasAttemptedLoad = false;
+
         std::ifstream mFile;
         std::vector<LogRecord> mLogs;
         std::unordered_set<uint32_t> mThreadIDSet;
-        GMDGLogFileValidationResult mError = GMDG_UNKNOWN;  
+        GMDGLogFileValidationResult mError = GMDG_UNKNOWN;
 
         [[nodiscard]]
         bool ReadRecord(LogRecord& record);

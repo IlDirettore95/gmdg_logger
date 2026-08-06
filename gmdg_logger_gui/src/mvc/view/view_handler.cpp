@@ -2,7 +2,13 @@
 
 #include "view_handler.hpp"
 
+#define GLFW_EXPOSE_NATIVE_WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include "GLFW/glfw3.h"
+#include "GLFW/glfw3native.h"
+#include <commdlg.h>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -10,6 +16,7 @@
 #include "gmdg_logger.h"
 
 #include "application.hpp"
+#include "mvc/controller/control_handler.hpp"
 #include "version.hpp"
 
 using namespace GMDGLoggerGUI;
@@ -37,7 +44,7 @@ void ViewHandler::Initialize()
         }
 
         glfwMakeContextCurrent(mWindow);
-        
+
         // VSync
         glfwSwapInterval(1);
     }
@@ -50,7 +57,7 @@ void ViewHandler::Initialize()
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-        
+
         io.IniFilename = nullptr;
 
         ImGui_ImplGlfw_InitForOpenGL(mWindow, true);
@@ -85,7 +92,7 @@ void ViewHandler::Update(ControlHandler& t_controlHandler)
 
     // Render View
     {
-        Render();
+        Render(t_controlHandler);
     }
 
     // ImGui Render
@@ -145,7 +152,7 @@ void ViewHandler::GLFWErrorCallback(int32_t t_error, const char* t_description)
     std::println("GLFW Error {0}: {1}", t_error, t_description);
 }
 
-void ViewHandler::Render()
+void ViewHandler::Render(ControlHandler& t_controlHandler)
 {
     const ImGuiViewport& viewport = *ImGui::GetMainViewport();
 
@@ -165,6 +172,8 @@ void ViewHandler::Render()
 
     ImGui::Begin("Logs", nullptr, windowFlags);
 
+    RenderOpenFileButton(t_controlHandler);
+    ImGui::SameLine();
     RenderSeverityFilter();
     ImGui::SameLine();
     RenderThreadIDFilter();
@@ -176,6 +185,39 @@ void ViewHandler::Render()
     RenderTable();
 
     ImGui::End();
+}
+
+bool ViewHandler::OpenFileDialog(GLFWwindow* t_window, std::string& t_outPath)
+{
+    char fileBuffer[MAX_PATH] = {};
+
+    OPENFILENAMEA ofn{};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = glfwGetWin32Window(t_window);
+    ofn.lpstrFilter = "Log Files (*.log)\0*.log\0All Files (*.*)\0*.*\0";
+    ofn.lpstrFile = fileBuffer;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+
+    if (!GetOpenFileNameA(&ofn))
+    {
+        return false;
+    }
+
+    t_outPath = fileBuffer;
+    return true;
+}
+
+void ViewHandler::RenderOpenFileButton(ControlHandler& t_controlHandler)
+{
+    if (ImGui::Button("Open File##open_file_button", ImVec2(90, 22)))
+    {
+        std::string path;
+        if (OpenFileDialog(mWindow, path))
+        {
+            t_controlHandler.AddAction("OpenFileAction", std::string(path));
+        }
+    }
 }
 
 void ViewHandler::RenderSeverityFilter()
@@ -267,9 +309,13 @@ void ViewHandler::RenderThreadIDFilter()
 
 void ViewHandler::RenderFileHeaderValidationError()
 {
-    GMDGLogFileValidationResult result = Application::GetInstance().GetModelHandler().GetFileValidationError();
-    
-    if (result != GMDG_SUCCESS && result >= GMDG_SUCCESS && result <= GMDG_UNUPPORTED_FILE_HEADER)
+    const ModelHandler& modelHandler = Application::GetInstance().GetModelHandler();
+
+    if (!modelHandler.HasAttemptedLoad()) return;
+
+    GMDGLogFileValidationResult result = modelHandler.GetFileValidationError();
+
+    if (result != GMDG_SUCCESS && result >= GMDG_SUCCESS && result <= GMDG_UNKNOWN)
     {
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Text, { 1.0f, 0.0f, 0.0f, 1.0f });
@@ -336,20 +382,20 @@ void ViewHandler::RenderTable()
             {
                 ImGui::TableSetColumnIndex(0);
                 ImGui::TextUnformatted(ts.c_str());
-                
+
                 ImGui::TableSetColumnIndex(1);
                 ImGui::Text("%u", log.thread_id);
-                
+
                 ImGui::TableSetColumnIndex(2);
                 ImGui::TextUnformatted(GMDG_Logger_Severity_To_String(static_cast<GMDGLogSeverity>(log.severity)));
-                
+
                 ImGui::TableSetColumnIndex(3);
                 ImGui::TextUnformatted(log.category.c_str());
-                
+
                 ImGui::TableSetColumnIndex(4);
                 ImGui::TextUnformatted(log.message.c_str());
             }
-         
+
             ImGui::PopStyleColor();
         }
 
