@@ -4,6 +4,13 @@ add_executable(gmdg_logger_bench)
 target_sources(gmdg_logger_bench
     PRIVATE
         src/main.cpp
+        src/backends/backend.hpp
+        src/backends/async_backend.hpp
+        src/backends/async_backend.cpp
+        src/backends/sync_backend.hpp
+        src/backends/sync_backend.cpp
+        src/backends/fprintf_backend.hpp
+        src/backends/fprintf_backend.cpp
 )
 
 target_include_directories(gmdg_logger_bench

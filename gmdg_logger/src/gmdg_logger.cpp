@@ -23,8 +23,14 @@ namespace
     // every GMDG_LOG_FLUSH_INTERVAL, swaps front/back under the same lock, and writes the
     // swapped-out buffer to disk outside the lock, so producers keep appending to the new front
     // buffer while the flush is in flight.
-    static constexpr size_t GMDG_LOG_BUFFER_CAPACITY = 1 * 1024 * 1024; // 1 MB per buffer
-    static constexpr std::chrono::milliseconds GMDG_LOG_FLUSH_INTERVAL{20};
+    //
+    // Capacity vs. flush cadence bounds how much of a burst the logger can absorb before it starts
+    // dropping records (visible via GMDG_Logger_GetDroppedRecordCount): benchmarking showed the
+    // previous 1 MB / 20 ms combo dropping the majority of records under bursty multi-threaded load.
+    // Raised here to widen that burst window; sustained overload still drops rather than blocking
+    // the caller, which is the deliberate non-blocking contract of this design.
+    static constexpr size_t GMDG_LOG_BUFFER_CAPACITY = 8 * 1024 * 1024; // 8 MB per buffer
+    static constexpr std::chrono::milliseconds GMDG_LOG_FLUSH_INTERVAL{5};
 
     std::FILE* g_file = nullptr;
     std::mutex g_mutex;
@@ -41,9 +47,17 @@ namespace
 
     uint64_t GetTimeNanoseconds()
     {
-        using namespace std::chrono;
+        // std::chrono::system_clock::now() round-trips through winpthread's clock_gettime64
+        // (FILETIME -> timespec -> ns, via two non-inlinable call hops) to reach this exact same
+        // Windows API call. Calling it directly skips that and the redundant timespec conversion.
+        FILETIME ft;
+        GetSystemTimePreciseAsFileTime(&ft);
 
-        return duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
+        const uint64_t ticksSince1601 = (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+
+        // FILETIME is in 100ns intervals since 1601-01-01; convert to ns since the Unix epoch (1970-01-01).
+        constexpr uint64_t EPOCH_DIFFERENCE_100NS = 116444736000000000ULL;
+        return (ticksSince1601 - EPOCH_DIFFERENCE_100NS) * 100;
     }
 
     uint32_t GMDG_GetThreadID()
