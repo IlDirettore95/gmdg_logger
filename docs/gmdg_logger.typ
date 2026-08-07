@@ -130,7 +130,8 @@ The library has two parts, built from `projects/gmdg_logger`:
 - *`gmdg_logger`* (and its DLL twin `gmdg_logger_c`) — the writer. A small C API, with a C++
   convenience layer of macros on top, that appends log records to a binary file.
 - *`gmdg_logger_gui`* — a companion ImGui viewer that reads that binary file and displays it as a
-  filterable table (by severity and thread ID), currently tailing one fixed relative path.
+  filterable table (by severity, thread name, and category), currently tailing one fixed relative
+  path.
 
 The design priority is *speed*: logging calls must be cheap enough to leave in a running game, not
 just a debug build.
@@ -236,6 +237,26 @@ std::string msg = ReadFromNetwork();
 GMDG_Log(GMDG_LOG_INFO, "NET", 3, msg.c_str(), static_cast<uint32_t>(msg.size()));
 ```
 
+== Naming threads
+
+Every record carries a thread name. By default it's an automatic `"Thread-<id>"` fallback derived
+from the OS thread id the first time that thread logs — useful for long-lived threads, useless for
+a pool of short-lived worker threads that get a different id every run. Call `LOG_SET_THREAD_NAME`
+once, typically at the top of a thread's entry function, to give it a stable, meaningful name
+instead — unlike category, this takes a runtime string, since worker threads are spawned
+dynamically and can't be tagged with a compile-time literal:
+
+```cpp
+void WorkerThreadMain(int index)
+{
+    LOG_SET_THREAD_NAME(std::format("WorkerPool-{}", index));
+    // ... LOG_* calls from here on carry "WorkerPool-<index>" instead of a raw, run-specific id
+}
+```
+
+The name is truncated to `GMDG_THREAD_NAME_MAX_LENGTH` bytes if longer, and applies to every
+subsequent `LOG_*`/`GMDG_Log` call on that thread until changed again.
+
 == Checking for dropped records
 
 Under sustained, extreme burst logging the async writer can drop records rather than block the
@@ -249,8 +270,9 @@ uint64_t dropped = GMDG_Logger_GetDroppedRecordCount();
 == Reading a capture back
 
 A capture is a binary file: one `GMDGLogFileHeader`, followed by a sequence of
-`GMDGLogRecord` + raw category bytes + raw message bytes. `GMDG_Logger_Validate_File_Header`
-checks the magic bytes, format version, and header size before you trust a file. In practice, use
+`GMDGLogRecord` + raw thread-name bytes + raw category bytes + raw message bytes.
+`GMDG_Logger_Validate_File_Header` checks the magic bytes, format version, and header size before
+you trust a file. In practice, use
 `gmdg_logger_gui` to view a capture rather than writing your own reader, unless you have a specific
 tooling need.
 
@@ -275,6 +297,17 @@ tooling need.
   in-memory front buffer under a short lock; never touches the filesystem on the calling thread.
   Prefer the `LOG_*` macros unless you already have an unformatted, explicitly-lengthed buffer
   (see "Formatted messages" above).
+]
+
+#api-entry(
+  "function",
+  "void GMDG_SetThreadName(\n    const char* t_name, uint32_t t_name_length);",
+)[
+  Tags the calling thread with a name; every subsequent `GMDG_Log` call on this thread carries it
+  until changed. If never called, `GMDG_Log` auto-assigns `"Thread-<id>"` the first time this
+  thread logs, so there is no unlabeled/forgot-to-name-it state. `t_name_length` beyond
+  `GMDG_THREAD_NAME_MAX_LENGTH` is silently truncated. Thread-local — prefer the `LOG_SET_THREAD_NAME`
+  macro from C++.
 ]
 
 #api-entry("function", "const char* GMDG_Logger_Severity_To_String(GMDGLogSeverity t_severity);")[
@@ -324,8 +357,15 @@ usage patterns that get anywhere close to that burstiness should either tolerate
   concurrently with each other.
 - *Windows only.* Thread identification uses `GetCurrentThreadId()` directly, and high-resolution
   timestamps use `GetSystemTimePreciseAsFileTime()`; there is no platform abstraction layer.
-- *Category and message are raw byte blobs, not null-terminated strings* on disk — `category_len`
-  and `message_len` in `GMDGLogRecord` are the only source of truth for their extents.
+- *Thread name and message and category are raw byte blobs, not null-terminated strings* on disk —
+  `thread_name_len`, `category_len`, and `message_len` in `GMDGLogRecord` are the only source of
+  truth for their extents.
+- *Thread names are stored per-record, not in a global thread_id → name registry.* This is
+  deliberate: OS thread ids get recycled once a thread exits, so a pool of short-lived worker
+  threads can easily see the same id reassigned to an unrelated thread later in the same process.
+  A side table keyed by thread_id would risk misattributing a name across two such threads; storing
+  the name (real or the `"Thread-<id>"` fallback) directly in every record avoids that at the cost
+  of some repeated bytes per record from the same thread.
 - *No framing/resync in the file format.* A file truncated mid-write (e.g. a crash) desyncs any
   reader walking records sequentially from that point on — the length-prefixed record after a
   truncation cannot be located without extra recovery logic.

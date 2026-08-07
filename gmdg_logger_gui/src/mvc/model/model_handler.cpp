@@ -20,7 +20,7 @@ void ModelHandler::Update()
     while (ReadRecord(record))
     {
         mLogs.emplace_back(std::move(record));
-        mThreadIDSet.emplace(mLogs.back().thread_id);
+        mThreadNameSet.emplace(mLogs.back().thread_name);
         mCategorySet.emplace(mLogs.back().category);
 
         // std::println("[{}] [{}] [{}] : {}",
@@ -44,7 +44,7 @@ void ModelHandler::LoadFile(const std::string& t_path)
     mFile.clear();
 
     mLogs.clear();
-    mThreadIDSet.clear();
+    mThreadNameSet.clear();
     mCategorySet.clear();
     mError = GMDG_UNKNOWN;
     mHasAttemptedLoad = true;
@@ -79,8 +79,14 @@ bool ModelHandler::ReadRecord(LogRecord& t_record)
     t_record.thread_id    = record.thread_id;
     t_record.severity     = record.severity;
 
+    t_record.thread_name.resize(record.thread_name_len);
     t_record.category.resize(record.category_len);
     t_record.message.resize(record.message_len);
+
+    if (!mFile.read(t_record.thread_name.data(), static_cast<std::streamsize>(record.thread_name_len)))
+    {
+        return false;
+    }
 
     if (!mFile.read(t_record.category.data(), static_cast<std::streamsize>(record.category_len)))
     {

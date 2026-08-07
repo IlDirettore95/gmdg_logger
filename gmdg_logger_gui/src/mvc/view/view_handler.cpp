@@ -176,7 +176,7 @@ void ViewHandler::Render(ControlHandler& t_controlHandler)
     ImGui::SameLine();
     RenderSeverityFilter();
     ImGui::SameLine();
-    RenderThreadIDFilter();
+    RenderThreadFilter();
     ImGui::SameLine();
     RenderCategoryFilter();
     ImGui::SameLine();
@@ -276,33 +276,33 @@ void ViewHandler::RenderAboutButton()
     }
 }
 
-void ViewHandler::RenderThreadIDFilter()
+void ViewHandler::RenderThreadFilter()
 {
-    ImGui::SetNextItemWidth(100.0f);
-    if (ImGui::BeginCombo("ThreadID", mDisabledThreadIDs.size() == 0 ? "All" : "Custom"))
+    ImGui::SetNextItemWidth(120.0f);
+    if (ImGui::BeginCombo("Thread", mDisabledThreadNames.size() == 0 ? "All" : "Custom"))
     {
-        if (ImGui::Selectable("All", mDisabledThreadIDs.size() == 0))
+        if (ImGui::Selectable("All", mDisabledThreadNames.size() == 0))
         {
-            mDisabledThreadIDs.clear();
+            mDisabledThreadNames.clear();
         }
 
         ImGui::Separator();
 
-        const std::unordered_set<uint32_t>& threadIDs = Application::GetInstance().GetModelHandler().GetThreadIDs();
+        const std::unordered_set<std::string>& threadNames = Application::GetInstance().GetModelHandler().GetThreadNames();
 
-        for (const auto& threadID : threadIDs)
+        for (const auto& threadName : threadNames)
         {
-            bool enabled = IsThreadIDEnabled(threadID);
+            bool enabled = IsThreadEnabled(threadName);
 
-            if (ImGui::Checkbox(std::format("{0}", threadID).c_str(), &enabled))
+            if (ImGui::Checkbox(threadName.c_str(), &enabled))
             {
                 if (enabled)
                 {
-                    mDisabledThreadIDs.erase(threadID);
+                    mDisabledThreadNames.erase(threadName);
                 }
                 else
                 {
-                    mDisabledThreadIDs.emplace(threadID);
+                    mDisabledThreadNames.emplace(threadName);
                 }
             }
         }
@@ -403,7 +403,7 @@ void ViewHandler::RenderTable()
         ImGuiTableFlags_ScrollY))
     {
         ImGui::TableSetupColumn("Time");
-        ImGui::TableSetupColumn("Thread ID");
+        ImGui::TableSetupColumn("Thread");
         ImGui::TableSetupColumn("Severity");
         ImGui::TableSetupColumn("Category");
         ImGui::TableSetupColumn("Message");
@@ -418,7 +418,7 @@ void ViewHandler::RenderTable()
         {
             const LogRecord& log = logs[i];
             if (!IsSeverityEnabled(log.severity)) continue;
-            if (!IsThreadIDEnabled(log.thread_id)) continue;
+            if (!IsThreadEnabled(log.thread_name)) continue;
             if (!IsCategoryEnabled(log.category)) continue;
             if (!IsMessageMatchingSearch(log.message)) continue;
             visible.emplace_back(i);
@@ -445,7 +445,7 @@ void ViewHandler::RenderTable()
                     ImGui::TextUnformatted(ts.c_str());
 
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::Text("%u", log.thread_id);
+                    ImGui::TextUnformatted(log.thread_name.c_str());
 
                     ImGui::TableSetColumnIndex(2);
                     ImGui::TextUnformatted(GMDG_Logger_Severity_To_String(static_cast<GMDGLogSeverity>(log.severity)));
@@ -484,9 +484,9 @@ bool ViewHandler::IsSeverityEnabled(uint32_t t_severity)
     return (mSeverityMask & (1u << t_severity)) != 0;
 }
 
-bool ViewHandler::IsThreadIDEnabled(uint32_t t_threadID)
+bool ViewHandler::IsThreadEnabled(const std::string& t_threadName)
 {
-    return !mDisabledThreadIDs.contains(t_threadID);
+    return !mDisabledThreadNames.contains(t_threadName);
 }
 
 bool ViewHandler::IsCategoryEnabled(const std::string& t_category)

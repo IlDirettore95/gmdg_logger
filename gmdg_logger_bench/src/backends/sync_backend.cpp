@@ -15,7 +15,7 @@ namespace
     // Same format constants as gmdg_logger.cpp - duplicated deliberately: this is a standalone
     // reference implementation, not a consumer of the library's internals, and keeping the same
     // on-disk format is what makes the latency/throughput comparison meaningful.
-    constexpr uint32_t GMDG_LOG_FORMAT_VERSION = 1;
+    constexpr uint32_t GMDG_LOG_FORMAT_VERSION = 2;
     constexpr std::array<char, 8> GMDG_LOG_MAGIC = {'G', 'M', 'D', 'G', 'L', 'O', 'G', '\0'};
 
     std::FILE* g_file = nullptr;
@@ -73,6 +73,7 @@ namespace
             GetTimeNanoseconds(),
             GetThreadID(),
             static_cast<uint32_t>(t_severity),
+            0u,                 // thread_name_len - sync backend has no thread-naming support
             t_categoryLength,
             t_messageLength
         };

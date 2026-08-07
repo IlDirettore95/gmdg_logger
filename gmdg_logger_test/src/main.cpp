@@ -2,6 +2,7 @@
 #include "gmdg_logger.hpp"
 
 #include <cstdio>
+#include <format>
 #include <thread>
 #include <vector>
 
@@ -10,8 +11,10 @@ namespace
     constexpr int kThreadCount = 4;
     constexpr int kMessagesPerThread = 20000;
 
-    void LogBurst()
+    void LogBurst(int t_index)
     {
+        LOG_SET_THREAD_NAME(std::format("WORKER-{}", t_index));
+
         for (int i = 0; i < kMessagesPerThread; ++i)
         {
             LOG_INFO("APPLICATION", "Burst log message");
@@ -37,7 +40,7 @@ namespace
         GMDGLogRecord record{};
         while (std::fread(&record, sizeof(record), 1, file) == 1)
         {
-            if (std::fseek(file, record.category_len + record.message_len, SEEK_CUR) != 0) break;
+            if (std::fseek(file, record.thread_name_len + record.category_len + record.message_len, SEEK_CUR) != 0) break;
             ++count;
         }
 
@@ -54,6 +57,8 @@ int main()
 
     GMDG_Logger_Initialize("app.log");
 
+    LOG_SET_THREAD_NAME("MAIN");
+
     LOG_DEBUG("APPLICATION.PHYSICS", "This is a debug");
     LOG_INFO("APPLICATION.GRAPHICS", "This is an info");
     LOG_WARNING("APPLICATION.AI", "This is a warning");
@@ -63,7 +68,7 @@ int main()
     threads.reserve(kThreadCount);
     for (int i = 0; i < kThreadCount; ++i)
     {
-        threads.emplace_back(LogBurst);
+        threads.emplace_back(LogBurst, i);
     }
     for (auto& thread : threads)
     {

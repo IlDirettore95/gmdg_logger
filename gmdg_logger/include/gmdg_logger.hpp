@@ -109,6 +109,14 @@ namespace GMDGLogger
         }
     }
 
+    // Tags the calling thread with a runtime name (unlike category, this can't be a compile-time
+    // literal - worker threads are spawned dynamically). Truncated to GMDG_THREAD_NAME_MAX_LENGTH
+    // bytes if longer. If never called, logged records fall back to "Thread-<id>".
+    inline void SetThreadName(std::string_view t_name)
+    {
+        GMDG_SetThreadName(t_name.data(), static_cast<uint32_t>(t_name.size()));
+    }
+
     template <size_t N1, typename... Args>
     inline void Log(
         GMDGLogSeverity t_level,
@@ -157,12 +165,16 @@ namespace GMDGLogger
 #define LOG_ERROR(cat, fmt, ...) \
     ::GMDGLogger::Log(GMDG_LOG_ERROR, cat, fmt __VA_OPT__(,) __VA_ARGS__)
 
+#define LOG_SET_THREAD_NAME(name) \
+    ::GMDGLogger::SetThreadName(name)
+
 #else
 
 #define LOG_DEBUG(cat, fmt, ...)
 #define LOG_INFO(cat, fmt, ...)
 #define LOG_WARNING(cat, fmt, ...)
 #define LOG_ERROR(cat, fmt, ...)
+#define LOG_SET_THREAD_NAME(name)
 
 #endif
 

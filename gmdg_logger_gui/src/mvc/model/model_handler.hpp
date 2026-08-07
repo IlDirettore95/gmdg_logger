@@ -15,6 +15,7 @@ namespace GMDGLoggerGUI
         uint32_t thread_id    = 0;
         uint32_t severity     = 0;
 
+        std::string thread_name;
         std::string category;
         std::string message;
     };
@@ -35,7 +36,7 @@ namespace GMDGLoggerGUI
         inline const std::vector<LogRecord>& GetLogs() const { return mLogs; }
 
         [[nodiscard]]
-        inline const std::unordered_set<uint32_t>& GetThreadIDs() const { return mThreadIDSet; }
+        inline const std::unordered_set<std::string>& GetThreadNames() const { return mThreadNameSet; }
 
         [[nodiscard]]
         inline const std::unordered_set<std::string>& GetCategories() const { return mCategorySet; }
@@ -57,7 +58,7 @@ namespace GMDGLoggerGUI
 
         std::ifstream mFile;
         std::vector<LogRecord> mLogs;
-        std::unordered_set<uint32_t> mThreadIDSet;
+        std::unordered_set<std::string> mThreadNameSet;
         std::unordered_set<std::string> mCategorySet;
         GMDGLogFileValidationResult mError = GMDG_UNKNOWN;
 

@@ -7,6 +7,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
+#include <format>
 #include <mutex>
 #include <thread>
 #include <cstring>
@@ -15,7 +16,7 @@
 
 namespace
 {
-    static constexpr uint32_t GMDG_LOG_FORMAT_VERSION = 1;
+    static constexpr uint32_t GMDG_LOG_FORMAT_VERSION = 2;
     static constexpr std::array<char, 8> GMDG_LOG_MAGIC = {'G', 'M', 'D', 'G', 'L', 'O', 'G', '\0'};
 
     // Async double-buffered writer: GMDG_Log() only ever memcpy's into the "front" buffer under
@@ -44,6 +45,13 @@ namespace
     std::atomic<bool> g_running{false};
     std::condition_variable g_wakeCv;
     std::thread g_writerThread;
+
+    // Per-thread name tag, set via GMDG_SetThreadName. Left unset, GMDG_Log lazily fills it with
+    // a "Thread-<id>" fallback the first time this thread logs, so every record always carries a
+    // usable label without requiring callers to opt in.
+    thread_local char     g_threadNameBuffer[GMDG_THREAD_NAME_MAX_LENGTH + 1] = {};
+    thread_local uint32_t g_threadNameLength = 0;
+    thread_local bool     g_threadNameIsSet = false;
 
     uint64_t GetTimeNanoseconds()
     {
@@ -213,6 +221,20 @@ extern "C" void GMDG_Logger_Shutdown()
     }
 }
 
+extern "C" void GMDG_SetThreadName(const char* t_name, uint32_t t_name_length)
+{
+    GMDG_ASSERT_WITH_MESSAGE(t_name != nullptr || t_name_length == 0,
+        "t_name is null but t_name_length is {}", t_name_length);
+
+    const uint32_t clampedLength = t_name_length < GMDG_THREAD_NAME_MAX_LENGTH
+        ? t_name_length
+        : GMDG_THREAD_NAME_MAX_LENGTH;
+
+    std::memcpy(g_threadNameBuffer, t_name, clampedLength);
+    g_threadNameLength = clampedLength;
+    g_threadNameIsSet = true;
+}
+
 extern "C" void GMDG_Log(
     uint32_t        t_severity,
     const char*     t_category,
@@ -225,7 +247,16 @@ extern "C" void GMDG_Log(
     GMDG_ASSERT_WITH_MESSAGE(t_message != nullptr || t_message_length == 0,
         "t_message is null but t_message_length is {}", t_message_length);
 
-    const size_t record_size = sizeof(GMDGLogRecord) + t_category_length + t_message_length;
+    const uint32_t threadID = GMDG_GetThreadID();
+
+    if (!g_threadNameIsSet)
+    {
+        const auto result = std::format_to_n(g_threadNameBuffer, GMDG_THREAD_NAME_MAX_LENGTH, "Thread-{}", threadID);
+        g_threadNameLength = static_cast<uint32_t>(result.out - g_threadNameBuffer);
+        g_threadNameIsSet = true;
+    }
+
+    const size_t record_size = sizeof(GMDGLogRecord) + g_threadNameLength + t_category_length + t_message_length;
 
     std::lock_guard lock(g_bufferMutex);
 
@@ -240,8 +271,9 @@ extern "C" void GMDG_Log(
 
     const GMDGLogRecord record{
         GetTimeNanoseconds(),
-        GMDG_GetThreadID(),
+        threadID,
         t_severity,
+        g_threadNameLength,
         t_category_length,
         t_message_length
     };
@@ -249,6 +281,8 @@ extern "C" void GMDG_Log(
     uint8_t* dest = buffer.data() + g_frontOffset;
     std::memcpy(dest, &record, sizeof(record));
     dest += sizeof(record);
+    std::memcpy(dest, g_threadNameBuffer, g_threadNameLength);
+    dest += g_threadNameLength;
     std::memcpy(dest, t_category, t_category_length);
     dest += t_category_length;
     std::memcpy(dest, t_message, t_message_length);

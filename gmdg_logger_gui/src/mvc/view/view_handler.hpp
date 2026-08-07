@@ -26,7 +26,7 @@ namespace GMDGLoggerGUI
         void Render(ControlHandler& t_controlHandler);
         void RenderOpenFileButton(ControlHandler& t_controlHandler);
         void RenderSeverityFilter();
-        void RenderThreadIDFilter();
+        void RenderThreadFilter();
         void RenderCategoryFilter();
         void RenderSearchBar();
         void RenderAboutButton();
@@ -34,14 +34,14 @@ namespace GMDGLoggerGUI
         void RenderTable();
         ImVec4 SeverityToColor(uint32_t t_severity);
         bool IsSeverityEnabled(uint32_t t_severity);
-        bool IsThreadIDEnabled(uint32_t t_threadID);
+        bool IsThreadEnabled(const std::string& t_threadName);
         bool IsCategoryEnabled(const std::string& t_category);
         bool IsMessageMatchingSearch(const std::string& t_message);
 
         GLFWwindow* mWindow;
 
         uint32_t mSeverityMask = 0xFFFFFFFF;
-        std::unordered_set<uint32_t> mDisabledThreadIDs;
+        std::unordered_set<std::string> mDisabledThreadNames;
         std::unordered_set<std::string> mDisabledCategories;
         char mSearchBuffer[256] = {};
     };
