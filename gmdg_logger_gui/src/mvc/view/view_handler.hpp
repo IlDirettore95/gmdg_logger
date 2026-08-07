@@ -28,6 +28,7 @@ namespace GMDGLoggerGUI
         void RenderSeverityFilter();
         void RenderThreadIDFilter();
         void RenderCategoryFilter();
+        void RenderSearchBar();
         void RenderAboutButton();
         void RenderFileHeaderValidationError();
         void RenderTable();
@@ -35,11 +36,13 @@ namespace GMDGLoggerGUI
         bool IsSeverityEnabled(uint32_t t_severity);
         bool IsThreadIDEnabled(uint32_t t_threadID);
         bool IsCategoryEnabled(const std::string& t_category);
+        bool IsMessageMatchingSearch(const std::string& t_message);
 
         GLFWwindow* mWindow;
 
         uint32_t mSeverityMask = 0xFFFFFFFF;
         std::unordered_set<uint32_t> mDisabledThreadIDs;
         std::unordered_set<std::string> mDisabledCategories;
+        char mSearchBuffer[256] = {};
     };
 }

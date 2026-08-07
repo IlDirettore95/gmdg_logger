@@ -180,6 +180,8 @@ void ViewHandler::Render(ControlHandler& t_controlHandler)
     ImGui::SameLine();
     RenderCategoryFilter();
     ImGui::SameLine();
+    RenderSearchBar();
+    ImGui::SameLine();
     RenderAboutButton();
     RenderFileHeaderValidationError();
 
@@ -344,6 +346,12 @@ void ViewHandler::RenderCategoryFilter()
     }
 }
 
+void ViewHandler::RenderSearchBar()
+{
+    ImGui::SetNextItemWidth(200.0f);
+    ImGui::InputText("Search##message_search", mSearchBuffer, sizeof(mSearchBuffer));
+}
+
 void ViewHandler::RenderFileHeaderValidationError()
 {
     const ModelHandler& modelHandler = Application::GetInstance().GetModelHandler();
@@ -412,6 +420,7 @@ void ViewHandler::RenderTable()
             if (!IsSeverityEnabled(log.severity)) continue;
             if (!IsThreadIDEnabled(log.thread_id)) continue;
             if (!IsCategoryEnabled(log.category)) continue;
+            if (!IsMessageMatchingSearch(log.message)) continue;
             visible.emplace_back(i);
         }
 
@@ -483,4 +492,18 @@ bool ViewHandler::IsThreadIDEnabled(uint32_t t_threadID)
 bool ViewHandler::IsCategoryEnabled(const std::string& t_category)
 {
     return !mDisabledCategories.contains(t_category);
+}
+
+bool ViewHandler::IsMessageMatchingSearch(const std::string& t_message)
+{
+    if (mSearchBuffer[0] == '\0') return true;
+
+    auto toLower = [](unsigned char c) { return std::tolower(c); };
+
+    std::string needle = mSearchBuffer;
+    std::string haystack = t_message;
+    std::ranges::transform(needle, needle.begin(), toLower);
+    std::ranges::transform(haystack, haystack.begin(), toLower);
+
+    return haystack.find(needle) != std::string::npos;
 }
