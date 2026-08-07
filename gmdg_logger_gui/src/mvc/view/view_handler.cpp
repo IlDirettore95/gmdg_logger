@@ -178,6 +178,8 @@ void ViewHandler::Render(ControlHandler& t_controlHandler)
     ImGui::SameLine();
     RenderThreadIDFilter();
     ImGui::SameLine();
+    RenderCategoryFilter();
+    ImGui::SameLine();
     RenderAboutButton();
     RenderFileHeaderValidationError();
 
@@ -307,6 +309,41 @@ void ViewHandler::RenderThreadIDFilter()
     }
 }
 
+void ViewHandler::RenderCategoryFilter()
+{
+    ImGui::SetNextItemWidth(100.0f);
+    if (ImGui::BeginCombo("Category", mDisabledCategories.size() == 0 ? "All" : "Custom"))
+    {
+        if (ImGui::Selectable("All", mDisabledCategories.size() == 0))
+        {
+            mDisabledCategories.clear();
+        }
+
+        ImGui::Separator();
+
+        const std::unordered_set<std::string>& categories = Application::GetInstance().GetModelHandler().GetCategories();
+
+        for (const auto& category : categories)
+        {
+            bool enabled = IsCategoryEnabled(category);
+
+            if (ImGui::Checkbox(category.c_str(), &enabled))
+            {
+                if (enabled)
+                {
+                    mDisabledCategories.erase(category);
+                }
+                else
+                {
+                    mDisabledCategories.emplace(category);
+                }
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+}
+
 void ViewHandler::RenderFileHeaderValidationError()
 {
     const ModelHandler& modelHandler = Application::GetInstance().GetModelHandler();
@@ -367,36 +404,52 @@ void ViewHandler::RenderTable()
 
         const std::vector<LogRecord>& logs = Application::GetInstance().GetModelHandler().GetLogs();
 
-        for (const auto& log : logs)
+        std::vector<uint32_t> visible;
+        visible.reserve(logs.size());
+        for (uint32_t i = 0; i < logs.size(); ++i)
         {
+            const LogRecord& log = logs[i];
             if (!IsSeverityEnabled(log.severity)) continue;
             if (!IsThreadIDEnabled(log.thread_id)) continue;
+            if (!IsCategoryEnabled(log.category)) continue;
+            visible.emplace_back(i);
+        }
 
-            ImGui::TableNextRow();
+        ImGuiListClipper clipper;
+        clipper.Begin(static_cast<int>(visible.size()));
 
-            const std::string ts = std::format("{:%F %T}", std::chrono::floor<std::chrono::milliseconds>(std::chrono::sys_time<std::chrono::nanoseconds>{std::chrono::nanoseconds{log.timestamp_ns}}));
-
-            ImGui::PushStyleColor(ImGuiCol_Text, SeverityToColor(log.severity));
-
-            // Columns
+        while (clipper.Step())
+        {
+            for (int32_t row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
             {
-                ImGui::TableSetColumnIndex(0);
-                ImGui::TextUnformatted(ts.c_str());
+                const LogRecord& log = logs[visible[row]];
 
-                ImGui::TableSetColumnIndex(1);
-                ImGui::Text("%u", log.thread_id);
+                ImGui::TableNextRow();
 
-                ImGui::TableSetColumnIndex(2);
-                ImGui::TextUnformatted(GMDG_Logger_Severity_To_String(static_cast<GMDGLogSeverity>(log.severity)));
+                const std::string ts = std::format("{:%F %T}", std::chrono::floor<std::chrono::milliseconds>(std::chrono::sys_time<std::chrono::nanoseconds>{std::chrono::nanoseconds{log.timestamp_ns}}));
 
-                ImGui::TableSetColumnIndex(3);
-                ImGui::TextUnformatted(log.category.c_str());
+                ImGui::PushStyleColor(ImGuiCol_Text, SeverityToColor(log.severity));
 
-                ImGui::TableSetColumnIndex(4);
-                ImGui::TextUnformatted(log.message.c_str());
+                // Columns
+                {
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::TextUnformatted(ts.c_str());
+
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("%u", log.thread_id);
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::TextUnformatted(GMDG_Logger_Severity_To_String(static_cast<GMDGLogSeverity>(log.severity)));
+
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::TextUnformatted(log.category.c_str());
+
+                    ImGui::TableSetColumnIndex(4);
+                    ImGui::TextUnformatted(log.message.c_str());
+                }
+
+                ImGui::PopStyleColor();
             }
-
-            ImGui::PopStyleColor();
         }
 
         ImGui::EndTable();
@@ -425,4 +478,9 @@ bool ViewHandler::IsSeverityEnabled(uint32_t t_severity)
 bool ViewHandler::IsThreadIDEnabled(uint32_t t_threadID)
 {
     return !mDisabledThreadIDs.contains(t_threadID);
+}
+
+bool ViewHandler::IsCategoryEnabled(const std::string& t_category)
+{
+    return !mDisabledCategories.contains(t_category);
 }

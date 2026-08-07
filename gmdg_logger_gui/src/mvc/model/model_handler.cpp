@@ -21,6 +21,7 @@ void ModelHandler::Update()
     {
         mLogs.emplace_back(std::move(record));
         mThreadIDSet.emplace(mLogs.back().thread_id);
+        mCategorySet.emplace(mLogs.back().category);
 
         // std::println("[{}] [{}] [{}] : {}",
         //              mLogs.back().thread_id,
@@ -44,6 +45,7 @@ void ModelHandler::LoadFile(const std::string& t_path)
 
     mLogs.clear();
     mThreadIDSet.clear();
+    mCategorySet.clear();
     mError = GMDG_UNKNOWN;
     mHasAttemptedLoad = true;
 

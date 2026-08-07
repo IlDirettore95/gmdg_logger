@@ -38,6 +38,9 @@ namespace GMDGLoggerGUI
         inline const std::unordered_set<uint32_t>& GetThreadIDs() const { return mThreadIDSet; }
 
         [[nodiscard]]
+        inline const std::unordered_set<std::string>& GetCategories() const { return mCategorySet; }
+
+        [[nodiscard]]
         inline GMDGLogFileValidationResult GetFileValidationError() const { return mError; }
 
         [[nodiscard]]
@@ -55,6 +58,7 @@ namespace GMDGLoggerGUI
         std::ifstream mFile;
         std::vector<LogRecord> mLogs;
         std::unordered_set<uint32_t> mThreadIDSet;
+        std::unordered_set<std::string> mCategorySet;
         GMDGLogFileValidationResult mError = GMDG_UNKNOWN;
 
         [[nodiscard]]

@@ -54,10 +54,10 @@ int main()
 
     GMDG_Logger_Initialize("app.log");
 
-    LOG_DEBUG("APPLICATION", "This is a debug");
-    LOG_INFO("APPLICATION", "This is an info");
-    LOG_WARNING("APPLICATION", "This is a warning");
-    LOG_ERROR("APPLICATION", "This is an error");
+    LOG_DEBUG("APPLICATION.PHYSICS", "This is a debug");
+    LOG_INFO("APPLICATION.GRAPHICS", "This is an info");
+    LOG_WARNING("APPLICATION.AI", "This is a warning");
+    LOG_ERROR("APPLICATION.UI", "This is an error");
 
     std::vector<std::thread> threads;
     threads.reserve(kThreadCount);
