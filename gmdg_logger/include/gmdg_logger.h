@@ -38,22 +38,22 @@ typedef enum GMDGBool
 #pragma pack(push, 1)
 typedef struct GMDGLogFileHeader
 {
-    char     magic[8];             // "GMDGLOG\0"
-    uint32_t format_version;       // file format version
-    uint32_t record_header_size;   // sizeof(log_record_header) used by writer
-    uint32_t flags;                // reserved for future use
+    char     Magic[8];             // "GMDGLOG\0"
+    uint32_t FormatVersion;        // file format version
+    uint32_t RecordHeaderSize;     // sizeof(log_record_header) used by writer
+    uint32_t Flags;                // reserved for future use
 } GMDGLogFileHeader;
 #pragma pack(pop)
 
 #pragma pack(push, 1)
 typedef struct GMDGLogRecord
 {
-    uint64_t timestamp_ns;
-    uint32_t thread_id;
-    uint32_t severity;
-    uint32_t thread_name_len;
-    uint32_t category_len;
-    uint32_t message_len;
+    uint64_t Timestamp_Ns;
+    uint32_t ThreadId;
+    uint32_t Severity;
+    uint32_t ThreadNameLength;
+    uint32_t CategoryLength;
+    uint32_t MessageLength;
 } GMDGLogRecord;
 #pragma pack(pop)
 
@@ -66,16 +66,16 @@ void GMDG_Logger_Shutdown();
 void GMDG_Log(
     uint32_t        t_severity,
     const char*     t_category,
-    uint32_t        t_category_length,
+    uint32_t        t_categoryLength,
     const char*     t_message,
-    uint32_t        t_message_length);
+    uint32_t        t_messageLength);
 
 // Tags the calling thread with a name; every subsequent GMDG_Log call on this thread carries it
 // until changed. If never called, GMDG_Log auto-assigns "Thread-<id>" the first time this thread
-// logs. t_name_length beyond GMDG_THREAD_NAME_MAX_LENGTH is silently truncated. Thread-local.
+// logs. t_nameLength beyond GMDG_THREAD_NAME_MAX_LENGTH is silently truncated. Thread-local.
 void GMDG_SetThreadName(
     const char* t_name,
-    uint32_t    t_name_length);
+    uint32_t    t_nameLength);
 
 const char* GMDG_Logger_Severity_To_String(
     GMDGLogSeverity t_severity);

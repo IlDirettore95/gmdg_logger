@@ -23,7 +23,7 @@ namespace GMDGLogger
     // the call site allocation-free even for formatted messages. Output longer than this is
     // truncated by std::format_to_n (it never overruns the buffer); GMDG_Log only ever sees the
     // bytes actually written.
-    inline constexpr size_t kMessageBufferSize = 1024;
+    inline constexpr size_t MessageBufferSize = 1024;
 
     // Converts one argument to text for the fast formatting path below. Returns the number of
     // bytes written (0 is a valid result for an empty string argument), or SIZE_MAX if this type
@@ -133,9 +133,9 @@ namespace GMDGLogger
         }
         else
         {
-            char buffer[kMessageBufferSize];
+            char buffer[MessageBufferSize];
             size_t written = 0;
-            const bool fastPathOk = TryFastFormatImpl(buffer, kMessageBufferSize, t_format.get(), written, t_args...);
+            const bool fastPathOk = TryFastFormatImpl(buffer, MessageBufferSize, t_format.get(), written, t_args...);
 
             uint32_t length;
             if (fastPathOk)

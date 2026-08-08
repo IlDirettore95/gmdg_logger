@@ -45,7 +45,7 @@ namespace
         GMDGLogRecord record{};
         while (std::fread(&record, sizeof(record), 1, file) == 1)
         {
-            if (std::fseek(file, record.thread_name_len + record.category_len + record.message_len, SEEK_CUR) != 0) break;
+            if (std::fseek(file, record.ThreadNameLength + record.CategoryLength + record.MessageLength, SEEK_CUR) != 0) break;
             ++count;
         }
 
@@ -103,19 +103,19 @@ namespace
         {
             if (currentIndex == t_index)
             {
-                if (std::fseek(file, record.thread_name_len + record.category_len, SEEK_CUR) != 0)
+                if (std::fseek(file, record.ThreadNameLength + record.CategoryLength, SEEK_CUR) != 0)
                 {
                     std::fclose(file);
                     return {};
                 }
 
-                std::string message(record.message_len, '\0');
-                const size_t bytesRead = std::fread(message.data(), 1, record.message_len, file);
+                std::string message(record.MessageLength, '\0');
+                const size_t bytesRead = std::fread(message.data(), 1, record.MessageLength, file);
                 std::fclose(file);
-                return (bytesRead == record.message_len) ? message : std::string{};
+                return (bytesRead == record.MessageLength) ? message : std::string{};
             }
 
-            if (std::fseek(file, record.thread_name_len + record.category_len + record.message_len, SEEK_CUR) != 0) break;
+            if (std::fseek(file, record.ThreadNameLength + record.CategoryLength + record.MessageLength, SEEK_CUR) != 0) break;
             ++currentIndex;
         }
 
@@ -141,10 +141,10 @@ namespace
         GMDGLogRecord record{};
         while (std::fread(&record, sizeof(record), 1, file) == 1)
         {
-            std::string name(record.thread_name_len, '\0');
-            if (std::fread(name.data(), 1, record.thread_name_len, file) != record.thread_name_len) break;
-            if (std::fseek(file, record.category_len + record.message_len, SEEK_CUR) != 0) break;
-            result.emplace_back(record.thread_id, std::move(name));
+            std::string name(record.ThreadNameLength, '\0');
+            if (std::fread(name.data(), 1, record.ThreadNameLength, file) != record.ThreadNameLength) break;
+            if (std::fseek(file, record.CategoryLength + record.MessageLength, SEEK_CUR) != 0) break;
+            result.emplace_back(record.ThreadId, std::move(name));
         }
 
         std::fclose(file);

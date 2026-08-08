@@ -40,7 +40,7 @@ namespace
         GMDGLogRecord record{};
         while (std::fread(&record, sizeof(record), 1, file) == 1)
         {
-            if (std::fseek(file, record.thread_name_len + record.category_len + record.message_len, SEEK_CUR) != 0) break;
+            if (std::fseek(file, record.ThreadNameLength + record.CategoryLength + record.MessageLength, SEEK_CUR) != 0) break;
             ++count;
         }
 

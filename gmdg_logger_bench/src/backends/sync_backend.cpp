@@ -36,10 +36,10 @@ namespace
     void WriteFileHeader(std::FILE* t_file)
     {
         GMDGLogFileHeader header{};
-        std::memcpy(header.magic, GMDG_LOG_MAGIC.data(), sizeof(header.magic));
-        header.format_version = GMDG_LOG_FORMAT_VERSION;
-        header.record_header_size = sizeof(GMDGLogFileHeader);
-        header.flags = 0;
+        std::memcpy(header.Magic, GMDG_LOG_MAGIC.data(), sizeof(header.Magic));
+        header.FormatVersion = GMDG_LOG_FORMAT_VERSION;
+        header.RecordHeaderSize = sizeof(GMDGLogFileHeader);
+        header.Flags = 0;
 
         std::fwrite(&header, sizeof(header), 1, t_file);
     }
@@ -73,7 +73,7 @@ namespace
             GetTimeNanoseconds(),
             GetThreadID(),
             static_cast<uint32_t>(t_severity),
-            0u,                 // thread_name_len - sync backend has no thread-naming support
+            0u,                 // ThreadNameLength - sync backend has no thread-naming support
             t_categoryLength,
             t_messageLength
         };

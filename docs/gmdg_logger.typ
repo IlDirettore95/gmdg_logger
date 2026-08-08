@@ -117,202 +117,83 @@
 )
 
 // ===========================================================================
-= What is this for?
+= Public API
 
-`gmdg_logger` is a logging library for use inside a game engine. A log entry is scoped to exactly
-four things: a *message*, a *category*, a *severity*, and the *thread* it came from. It is
-deliberately *not* a profiler — there is no support for, and no intent to add, structured telemetry
-such as counters, scoped timers/spans, or frame markers. If you need that, use a dedicated profiler
-instead.
+`gmdg_logger` exposes two layers: a C API (`gmdg_logger.h`, always compiled) and an optional C++
+convenience layer of macros on top (`gmdg_logger.hpp`, `namespace GMDGLogger`).
 
-The library has two parts, built from `projects/gmdg_logger`:
+== API reference — C API
 
-- *`gmdg_logger`* (and its DLL twin `gmdg_logger_c`) — the writer. A small C API, with a C++
-  convenience layer of macros on top, that appends log records to a binary file.
-- *`gmdg_logger_gui`* — a companion ImGui viewer that reads that binary file and displays it as a
-  filterable table (by severity, thread name, and category), currently tailing one fixed relative
-  path.
+#api-entry(
+  "enum",
+  "enum GMDGLogSeverity\n{\n    GMDG_LOG_DEBUG   = 0,\n    GMDG_LOG_INFO    = 1,\n    GMDG_LOG_WARNING = 2,\n    GMDG_LOG_ERROR   = 3,\n};",
+)[
+  The four built-in severity levels a record can carry.
+]
 
-The design priority is *speed*: logging calls must be cheap enough to leave in a running game, not
-just a debug build.
+#api-entry(
+  "enum",
+  "enum GMDGLogFileValidationResult\n{\n    GMDG_SUCCESS                  = 0,\n    GMDG_INVALID_MAGIC             = 1,\n    GMDG_UNUPPORTED_VERSION        = 2,\n    GMDG_UNUPPORTED_FILE_HEADER    = 3,\n    GMDG_UNKNOWN                   = 4,\n};",
+)[
+  Result of validating a `GMDGLogFileHeader` read back from disk. Note the `UNUPPORTED` spelling is
+  as declared in the header, not a typo introduced here.
+]
 
-#pagebreak()
+#api-entry(
+  "enum",
+  "enum GMDGBool\n{\n    GMDG_FALSE = 0,\n    GMDG_TRUE  = 1,\n};",
+)[
+  The C API's boolean type.
+]
 
-// ===========================================================================
-= When should I use it?
+#api-entry("macro", "#define GMDG_THREAD_NAME_MAX_LENGTH 31u")[
+  Maximum length, in bytes, of a thread name set via `GMDG_SetThreadName`; longer names are silently
+  truncated.
+]
 
-Use `gmdg_logger` when you want low-overhead, thread-safe logging of discrete text events
-(errors, warnings, state transitions, one-off diagnostics) from anywhere in an engine, with the
-ability to inspect a capture afterwards — or, loosely, while the process is still running — through
-`gmdg_logger_gui`.
+#api-entry(
+  "struct",
+  "#pragma pack(push, 1)\nstruct GMDGLogFileHeader\n{\n    char     Magic[8];\n    uint32_t FormatVersion;\n    uint32_t RecordHeaderSize;\n    uint32_t Flags;\n};",
+)[
+  Fixed-size header written once at the start of a capture file.
+]
 
-Do not reach for it when you need:
-
-- *Profiling data* (timings, counters, spans) — out of scope by design; use the separate profiler
-  project instead.
-- *Human-readable logs without any tooling* — the on-disk format is binary; you need
-  `gmdg_logger_gui` (or a small script) to make sense of a capture, you cannot just open it in a
-  text editor.
-- *Cross-platform logging* — the current implementation reads the thread ID via the Windows API
-  (`GetCurrentThreadId`) and has no platform abstraction.
-
-#pagebreak()
-
-// ===========================================================================
-= How do I use it correctly?
-
-== Getting started
-
-Link against the `gmdg_logger` static library target (or `gmdg_logger_c`, the shared/DLL variant
-built from the same source, if your consumer needs a C-ABI DLL instead), and add
-`gmdg_logger/include` to your include path. Both targets are declared in
-`projects/gmdg_logger/gmdg_logger/CMakeLists.txt`.
-
-`gmdg_logger.hpp` (the C++ convenience layer) only emits real code when `GMDG_LOGGER_ENABLED` is
-defined *before* it is included:
-
-```cpp
-#define GMDG_LOGGER_ENABLED
-#include "gmdg_logger.hpp"
-```
-
-If that macro is not defined, every `LOG_*` macro below compiles to nothing — this is the
-intended way to compile logging out of a build entirely (e.g. a shipping configuration), at zero
-runtime cost.
-
-== Basic usage
-
-```cpp
-#define GMDG_LOGGER_ENABLED
-#include "gmdg_logger.hpp"
-
-int main()
-{
-    GMDG_Logger_Initialize("app.log");
-
-    LOG_DEBUG  ("PHYSICS", "Broadphase rebuilt");
-    LOG_INFO   ("NETWORK", "Client connected");
-    LOG_WARNING("AUDIO",   "Voice pool exhausted");
-    LOG_ERROR  ("RENDER",  "Failed to compile shader");
-
-    GMDG_Logger_Shutdown();
-}
-```
-
-- `GMDG_Logger_Initialize(path)` opens (or appends to) the given file once, at startup, from a
-  single thread.
-- `LOG_DEBUG` / `LOG_INFO` / `LOG_WARNING` / `LOG_ERROR` take a category and a `std::format`-style
-  message (format string plus optional arguments) and may be called from any thread, at any time
-  between `Initialize` and `Shutdown`.
-- `GMDG_Logger_Shutdown()` stops the background writer and closes the file. Call it once, and make
-  sure no other thread is still calling `LOG_*` when you do (see @limitations).
-
-== Formatted messages
-
-The message argument to `LOG_DEBUG` / `LOG_INFO` / `LOG_WARNING` / `LOG_ERROR` is a `std::format`
-string plus optional arguments, formatted into a fixed 1024-byte stack buffer
-(`GMDGLogger::kMessageBufferSize`) before being handed to the writer — no heap allocation, and
-output longer than the buffer is safely truncated rather than overrunning it:
-
-```cpp
-LOG_INFO ("AI",  "Enemy count: {}", count);
-LOG_ERROR("NET", "Failed after {} retries ({})", retries, reason);
-```
-
-A plain literal with no arguments, as in the example above, still works exactly the same way — a
-format string with no placeholders is just its own text.
-
-Because the format call lives inside the macro's own arguments, disabling the logger
-(`GMDG_LOGGER_ENABLED` undefined) drops the formatting work entirely along with everything else.
-This is the reason to prefer `LOG_*` over building a string yourself: a `std::format` call made in
-a separate statement *before* a macro invocation always runs, regardless of whether logging is
-enabled — only work that's textually inside the macro's arguments gets compiled out with it.
-
-The category must still be a compile-time string literal (it's a static subsystem tag, not runtime
-data). For a message that's already in an owned buffer, or longer than the 1024-byte formatting
-buffer, call the C API directly with an explicit length to skip the formatting step entirely:
-
-```cpp
-std::string msg = ReadFromNetwork();
-GMDG_Log(GMDG_LOG_INFO, "NET", 3, msg.c_str(), static_cast<uint32_t>(msg.size()));
-```
-
-== Naming threads
-
-Every record carries a thread name. By default it's an automatic `"Thread-<id>"` fallback derived
-from the OS thread id the first time that thread logs — useful for long-lived threads, useless for
-a pool of short-lived worker threads that get a different id every run. Call `LOG_SET_THREAD_NAME`
-once, typically at the top of a thread's entry function, to give it a stable, meaningful name
-instead — unlike category, this takes a runtime string, since worker threads are spawned
-dynamically and can't be tagged with a compile-time literal:
-
-```cpp
-void WorkerThreadMain(int index)
-{
-    LOG_SET_THREAD_NAME(std::format("WorkerPool-{}", index));
-    // ... LOG_* calls from here on carry "WorkerPool-<index>" instead of a raw, run-specific id
-}
-```
-
-The name is truncated to `GMDG_THREAD_NAME_MAX_LENGTH` bytes if longer, and applies to every
-subsequent `LOG_*`/`GMDG_Log` call on that thread until changed again.
-
-== Checking for dropped records
-
-Under sustained, extreme burst logging the async writer can drop records rather than block the
-calling thread (see @async-writer). Call `GMDG_Logger_GetDroppedRecordCount()` if you need to know
-whether that happened:
-
-```cpp
-uint64_t dropped = GMDG_Logger_GetDroppedRecordCount();
-```
-
-== Reading a capture back
-
-A capture is a binary file: one `GMDGLogFileHeader`, followed by a sequence of
-`GMDGLogRecord` + raw thread-name bytes + raw category bytes + raw message bytes.
-`GMDG_Logger_Validate_File_Header` checks the magic bytes, format version, and header size before
-you trust a file. In practice, use
-`gmdg_logger_gui` to view a capture rather than writing your own reader, unless you have a specific
-tooling need.
-
-== API reference
+#api-entry(
+  "struct",
+  "#pragma pack(push, 1)\nstruct GMDGLogRecord\n{\n    uint64_t Timestamp_Ns;\n    uint32_t ThreadId;\n    uint32_t Severity;\n    uint32_t ThreadNameLength;\n    uint32_t CategoryLength;\n    uint32_t MessageLength;\n};",
+)[
+  Fixed-size record header; followed on disk by the raw thread-name, category, and message bytes
+  whose lengths this struct specifies (none of the three are null-terminated).
+]
 
 #api-entry("function", "GMDGBool GMDG_Logger_Initialize(const char* t_path);")[
   Opens (or creates) the log file at `t_path` for the process, writing a `GMDGLogFileHeader` if the
-  file is new, and starts the background writer thread. Not reentrant — calling it a second time
-  while already initialized fails (and asserts in an assert-enabled build) rather than reopening.
+  file is new, and starts the background writer thread. Not reentrant.
 ]
 
 #api-entry("function", "void GMDG_Logger_Shutdown();")[
-  Stops the background writer thread and closes the file. Not synchronized against concurrent
-  `GMDG_Log` calls on other threads — see @limitations.
+  Stops the background writer thread and closes the file.
 ]
 
 #api-entry(
   "function",
-  "void GMDG_Log(\n    uint32_t t_severity,\n    const char* t_category, uint32_t t_category_length,\n    const char* t_message, uint32_t t_message_length);",
+  "void GMDG_Log(\n    uint32_t t_severity,\n    const char* t_category, uint32_t t_categoryLength,\n    const char* t_message, uint32_t t_messageLength);",
 )[
-  The underlying C entry point every `LOG_*` macro funnels through. Appends one record to the
-  in-memory front buffer under a short lock; never touches the filesystem on the calling thread.
-  Prefer the `LOG_*` macros unless you already have an unformatted, explicitly-lengthed buffer
-  (see "Formatted messages" above).
+  Appends one record. The underlying entry point every `LOG_*` macro funnels through.
 ]
 
 #api-entry(
   "function",
-  "void GMDG_SetThreadName(\n    const char* t_name, uint32_t t_name_length);",
+  "void GMDG_SetThreadName(\n    const char* t_name, uint32_t t_nameLength);",
 )[
   Tags the calling thread with a name; every subsequent `GMDG_Log` call on this thread carries it
-  until changed. If never called, `GMDG_Log` auto-assigns `"Thread-<id>"` the first time this
-  thread logs, so there is no unlabeled/forgot-to-name-it state. `t_name_length` beyond
-  `GMDG_THREAD_NAME_MAX_LENGTH` is silently truncated. Thread-local — prefer the `LOG_SET_THREAD_NAME`
-  macro from C++.
+  until changed. Thread-local. `t_nameLength` beyond `GMDG_THREAD_NAME_MAX_LENGTH` is silently
+  truncated.
 ]
 
 #api-entry("function", "const char* GMDG_Logger_Severity_To_String(GMDGLogSeverity t_severity);")[
   Returns a static string for one of the four severities (`"DEBUG"`, `"INFO"`, `"WARNING"`,
-  `"ERROR"`). Mainly useful for tooling that reads a capture back, such as `gmdg_logger_gui`.
+  `"ERROR"`).
 ]
 
 #api-entry(
@@ -320,121 +201,123 @@ tooling need.
   "GMDGLogFileValidationResult GMDG_Logger_Validate_File_Header(\n    const GMDGLogFileHeader* t_header);",
 )[
   Validates the magic bytes, format version, and header size of a `GMDGLogFileHeader` read from
-  disk, before a reader trusts the records that follow it.
+  disk.
 ]
 
 #api-entry("function", "uint64_t GMDG_Logger_GetDroppedRecordCount(void);")[
   Number of records dropped so far because the async write buffer was full at the moment
-  `GMDG_Log` was called. Monotonically increasing for the lifetime of one `Initialize`/`Shutdown`
-  session; reset to zero on the next `Initialize`.
+  `GMDG_Log` was called.
 ]
 
-#pagebreak()
+== API reference — C++ convenience layer
 
-// ===========================================================================
-= How it works internally <async-writer>
+Only compiled when `GMDG_LOGGER_ENABLED` is defined before `#include "gmdg_logger.hpp"` — see
+@configuration.
 
-`GMDG_Log` never touches the filesystem. It takes a short lock, memcpy's the serialized record
-into a "front" in-memory buffer, and returns. A background thread wakes every fixed interval
-(currently 5 ms), swaps the front buffer with an idle "back" buffer, and writes the swapped-out
-buffer to disk outside the lock — so producer threads keep appending to the new front buffer while
-the previous one is being flushed.
+#api-entry("constant", "inline constexpr size_t MessageBufferSize = 1024;")[
+  Size, in bytes, of the fixed stack buffer a formatted message is written into before being handed
+  to the C API — no heap allocation, and output longer than the buffer is safely truncated.
+]
 
-Each buffer has a fixed capacity (currently 8 MiB). If a record does not fit in the remaining space
-before the next swap, it is *dropped and counted* rather than blocking the calling thread — this
-capacity/interval combination was raised from an earlier 1 MiB / 20 ms pairing after benchmarking
-showed the smaller buffers dropping the majority of records under bursty multi-threaded load. Real
-usage patterns that get anywhere close to that burstiness should either tolerate drops (and monitor
-`GMDG_Logger_GetDroppedRecordCount()`) or have the buffer size / flush interval tuned further.
+#api-entry("function", "inline void SetThreadName(std::string_view t_name);")[
+  C++ wrapper over `GMDG_SetThreadName`; takes a runtime string, since worker threads are spawned
+  dynamically and can't be tagged with a compile-time literal.
+]
 
-== Log table column and row sizing
+#api-entry(
+  "function template",
+  "template <size_t N1, typename... Args>\ninline void Log(\n    GMDGLogSeverity t_level,\n    const char (&t_category)[N1],\n    std::format_string<Args...> t_format,\n    Args&&... t_args);",
+)[
+  Formats `t_format`/`t_args...` into the `MessageBufferSize`-byte stack buffer and forwards to
+  `GMDG_Log`. `t_category` must be a string-literal array (`const char (&)[N1]`) — a compile-time
+  subsystem tag, not runtime data.
+]
 
-`ViewHandler::RenderTable()` (`gmdg_logger_gui/src/mvc/view/view_handler.cpp`) enforces a minimum
-width per column and grows a row's height to fully show a wrapped multi-line message, neither of
-which `Dear ImGui` tables support natively:
+#api-entry(
+  "macro",
+  "LOG_DEBUG(t_category, t_format, ...)\nLOG_INFO(t_category, t_format, ...)\nLOG_WARNING(t_category, t_format, ...)\nLOG_ERROR(t_category, t_format, ...)",
+)[
+  Call `GMDGLogger::Log` with the corresponding `GMDGLogSeverity`. Compile to nothing when
+  `GMDG_LOGGER_ENABLED` is undefined.
+]
 
-- *Minimum column width.* ImGui tables have no per-column width floor beyond a few built-in
-  pixels, and no public getter for a column's current width. `RenderTable()` submits headers
-  manually (instead of `TableHeadersRow()`) so it can read each column's live width via
-  `GetContentRegionAvail().x` once per column per frame, and snap it back with
-  `TableSetColumnWidth()` if the user drags it below the configured floor. `TableSetColumnWidth()`
-  is declared in `imgui_internal.h`, not the public `imgui.h`, in the vendored ImGui version this
-  project uses — `view_handler.cpp` includes `imgui_internal.h` for this reason.
-- *Auto-growing message rows.* `ImGuiListClipper`, used for the table's virtualized scrolling,
-  assumes every row has the same height and cannot support wrapped rows of differing heights.
-  `RenderTable()` instead caches each visible row's wrapped height (via
-  `CalcTextSize(message, nullptr, false, wrapWidth).y`, the same measurement `TextWrapped()` uses
-  internally) as a prefix sum, and manually culls to the on-screen range each frame with a binary
-  search plus two spacer rows — so scrolling stays proportional to the number of *visible* rows,
-  not the total row count, while every message wraps and is never clipped.
+#api-entry("macro", "LOG_SET_THREAD_NAME(t_name)")[
+  Calls `GMDGLogger::SetThreadName`. Compiles to nothing when `GMDG_LOGGER_ENABLED` is undefined.
+]
 
-The two pieces of pure sizing math behind this — clamping a width to a minimum, and turning a line
-count into a row height — live in `gmdg_logger_gui/src/mvc/view/table_layout.hpp` / `.cpp`
-(namespace `GMDGLoggerGUI::TableLayout`) with no ImGui dependency, so they can be linked into
-`gmdg_logger_tests` and unit-tested directly:
+== Configuration <configuration>
+
+`GMDG_LOGGER_ENABLED` is a plain preprocessor macro — not a CMake option or cache variable, and not
+wired in any `CMakeLists.txt`. The *consumer* `#define`s it before `#include "gmdg_logger.hpp"`:
 
 ```cpp
-[[nodiscard]] float ClampToMinWidth(const float t_width, const float t_minWidth);
-[[nodiscard]] float ComputeRowHeight(const int32_t t_lineCount, const float t_lineHeight, const float t_verticalPadding);
+#define GMDG_LOGGER_ENABLED
+#include "gmdg_logger.hpp"
 ```
 
-#pagebreak()
+If left undefined, all five C++-layer macros (`LOG_DEBUG`, `LOG_INFO`, `LOG_WARNING`, `LOG_ERROR`,
+`LOG_SET_THREAD_NAME`) compile to nothing — the intended way to compile logging out of a build
+entirely (e.g. a shipping configuration), at zero runtime cost. This switch only gates the C++
+convenience layer; the C API in `gmdg_logger.h` is unaffected and always compiled.
 
-// ===========================================================================
-= Assumptions <limitations>
+#callout[
+  *Build prerequisite, not part of this library's own API:* the top-level `CMakeLists.txt` also
+  declares `GMDG_ASSERT_ENABLE`, which belongs to the sibling `gmdg_asserting` project
+  (`add_subdirectory(../gmdg_asserting)`) that `gmdg_logger`'s implementation links against
+  `PRIVATE`. The `Debug` preset turns it `ON`, `Release` turns it `OFF` — see @compiling.
+]
 
-- *Single process-wide logger.* All state is a set of global/static variables — there is no
-  per-instance logger object, and `Initialize` / `Shutdown` are not reentrant or safe to call
-  concurrently with each other.
-- *Windows only.* Thread identification uses `GetCurrentThreadId()` directly, and high-resolution
-  timestamps use `GetSystemTimePreciseAsFileTime()`; there is no platform abstraction layer.
-- *Thread name and message and category are raw byte blobs, not null-terminated strings* on disk —
-  `thread_name_len`, `category_len`, and `message_len` in `GMDGLogRecord` are the only source of
-  truth for their extents.
-- *Thread names are stored per-record, not in a global thread_id → name registry.* This is
-  deliberate: OS thread ids get recycled once a thread exits, so a pool of short-lived worker
-  threads can easily see the same id reassigned to an unrelated thread later in the same process.
-  A side table keyed by thread_id would risk misattributing a name across two such threads; storing
-  the name (real or the `"Thread-<id>"` fallback) directly in every record avoids that at the cost
-  of some repeated bytes per record from the same thread.
-- *No framing/resync in the file format.* A file truncated mid-write (e.g. a crash) desyncs any
-  reader walking records sequentially from that point on — the length-prefixed record after a
-  truncation cannot be located without extra recovery logic.
-- *Severities are a fixed, built-in 4-level enum* (`GMDG_LOG_DEBUG` / `INFO` / `WARNING` /
-  `ERROR`) today — there is currently no mechanism for a consuming application to define its own
-  severity set.
-- *`GMDG_Log` calls are not synchronized against `GMDG_Logger_Shutdown`.* A log call racing with
-  shutdown on another thread can access the writer mid-teardown.
-- *The log table's row-height cache is rebuilt only when the filtered row set or the Message
-  column's width actually changes between frames*, not on every frame — so a column resize or a
-  filter/search edit takes effect starting the next frame, not the same one (imperceptible in
-  practice).
+== Compiling the library <compiling>
 
-#pagebreak()
+Requirements:
 
-// ===========================================================================
-= Mistakes to avoid
+- `cmake_minimum_required(VERSION 4.1.1)`; C++23, fixed via presets (`CMAKE_CXX_STANDARD=23`,
+  `CMAKE_CXX_STANDARD_REQUIRED=ON`, `CMAKE_CXX_EXTENSIONS=OFF`).
+- *Windows only* — `gmdg_logger.cpp` includes `<windows.h>` directly for thread IDs and high-
+  resolution timestamps; there is no platform abstraction layer.
+- The sibling `gmdg_asserting` project checked out at `../gmdg_asserting`, relative to this
+  project's top-level source directory (referenced via `add_subdirectory`).
 
-- *Forgetting `#define GMDG_LOGGER_ENABLED` before including `gmdg_logger.hpp`.* All four `LOG_*`
-  macros silently vanish (no compile error, no runtime effect) — easy to miss for a first-time
-  integrator.
-- *Passing a `std::string` or any non-literal to `LOG_*`.* It will not compile; use `GMDG_Log`
-  directly with an explicit pointer and length instead (see above).
-- *Calling `LOG_*` before `GMDG_Logger_Initialize` or after `GMDG_Logger_Shutdown`.* The call is
-  silently dropped (it checks the internal file handle and returns early) rather than asserting or
-  erroring — do not rely on it to fail loudly.
-- *Assuming zero log loss under heavy burst logging.* The async writer's overflow policy is
-  drop-and-count, not block — check `GMDG_Logger_GetDroppedRecordCount()` if guaranteed delivery
-  matters for your use case.
-- *Calling `GMDG_Logger_Shutdown()` while other threads may still log.* Quiesce logging on other
-  threads first (see @limitations).
-- *Opening the binary log file in a text editor expecting readable text.* It is a binary format;
-  use `gmdg_logger_gui`, or the record layout above if you need to write your own reader.
-- *Feeding `ImGuiListClipper` rows of differing heights.* It measures one row once and multiplies
-  by index for all scroll/seek math — wrapped rows of varying height will desync its scrollbar and
-  visible-range calculations. `RenderTable()`'s manual culling (see @async-writer) exists
-  specifically to avoid this.
-- *Re-implementing ImGui's word-wrap algorithm to predict a row's height.* Always measure with the
-  real `CalcTextSize(text, nullptr, false, wrapWidth)` so the computed height can never disagree
-  with what `TextWrapped()` actually renders — a parallel wrap algorithm could drift and
-  reintroduce clipping.
+`CMakePresets.json` (single top-level file, version 4):
+
+#table(
+  columns: (auto, auto, auto, auto),
+  stroke: 0.5pt + rgb("#dddddd"),
+  inset: 6pt,
+  [*Preset*], [*`GMDG_ASSERT_ENABLE`*], [*Binary dir*], [*Install prefix*],
+  [`Debug`], [`ON`], [`build/debug`], [`setup/debug`],
+  [`Release`], [`OFF`], [`build/release`], [`setup/release`],
+)
+
+Built standalone, from the `gmdg_logger` directory:
+
+```
+cmake --preset Debug
+cmake --build --preset Debug
+```
+
+(substitute `Release` for the release configuration). This builds every target: `gmdg_logger`
+(static library), `gmdg_logger_c` (shared/DLL variant), `gmdg_logger_gui` (an ImGui capture
+viewer), `gmdg_logger_test` / the `gmdg_logger_tests` CTest executable, and `gmdg_logger_bench`.
+
+Compiler flags: MSVC gets `/W4 /EHsc`; GCC/Clang get `-Wall -Wextra -Wpedantic` plus
+`-static -static-libgcc -static-libstdc++`; non-MSVC builds additionally link `stdc++exp` for the
+test/bench/GUI executables.
+
+== Including in a future project
+
+*Static target (`gmdg_logger`)* — the common case:
+
++ `add_subdirectory()` this repository into your build.
++ `target_link_libraries(your_target PRIVATE gmdg_logger)` — `gmdg_logger/include` is a `PUBLIC`
+  include directory on the target, so it propagates automatically; no separate
+  `target_include_directories()` call is needed.
++ `#define GMDG_LOGGER_ENABLED` before `#include "gmdg_logger.hpp"` to get the `LOG_*` macros (see
+  @configuration); omit the define to compile them out entirely.
+
+*Shared/DLL target (`gmdg_logger_c`)* — for a C-ABI consumer that needs a DLL instead:
+
++ Its include directory is `PRIVATE`, so it does *not* propagate through
+  `target_link_libraries()` — manually add `gmdg_logger/include` to your own target's include
+  directories.
++ Link against, or load, the built DLL directly.

@@ -82,25 +82,25 @@ bool ModelHandler::ReadRecord(LogRecord& t_record)
     }
 
     t_record.Id           = s_nextId++;
-    t_record.Timestamp_Ns = record.timestamp_ns;
-    t_record.ThreadId     = record.thread_id;
-    t_record.Severity     = record.severity;
+    t_record.Timestamp_Ns = record.Timestamp_Ns;
+    t_record.ThreadId     = record.ThreadId;
+    t_record.Severity     = record.Severity;
 
-    t_record.ThreadName.resize(record.thread_name_len);
-    t_record.Category.resize(record.category_len);
-    t_record.Message.resize(record.message_len);
+    t_record.ThreadName.resize(record.ThreadNameLength);
+    t_record.Category.resize(record.CategoryLength);
+    t_record.Message.resize(record.MessageLength);
 
-    if (!m_file.read(t_record.ThreadName.data(), static_cast<std::streamsize>(record.thread_name_len)))
+    if (!m_file.read(t_record.ThreadName.data(), static_cast<std::streamsize>(record.ThreadNameLength)))
     {
         return false;
     }
 
-    if (!m_file.read(t_record.Category.data(), static_cast<std::streamsize>(record.category_len)))
+    if (!m_file.read(t_record.Category.data(), static_cast<std::streamsize>(record.CategoryLength)))
     {
         return false;
     }
 
-    if (!m_file.read(t_record.Message.data(), static_cast<std::streamsize>(record.message_len)))
+    if (!m_file.read(t_record.Message.data(), static_cast<std::streamsize>(record.MessageLength)))
     {
         return false;
     }
