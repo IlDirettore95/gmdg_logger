@@ -84,8 +84,7 @@
   #text(font: head-font, size: 34pt, weight: "bold", fill: accent)[gmdg_logger]
   #v(8pt)
   #text(font: head-font, size: 14pt, fill: rgb("#555555"))[
-    Low-overhead binary event logging for a game engine
-  ]
+    Low-overhead binary event logging library  ]
   #v(40pt)
   #text(font: head-font, size: 12pt, fill: rgb("#777777"))[Library Guide]
   #v(4pt)
@@ -117,7 +116,7 @@
 )
 
 // ===========================================================================
-= Public API
+= Public API <public-api>
 
 `gmdg_logger` exposes two layers: a C API (`gmdg_logger.h`, always compiled) and an optional C++
 convenience layer of macros on top (`gmdg_logger.hpp`, `namespace GMDGLogger`).
@@ -321,3 +320,102 @@ test/bench/GUI executables.
   `target_link_libraries()` — manually add `gmdg_logger/include` to your own target's include
   directories.
 + Link against, or load, the built DLL directly.
+
+// ===========================================================================
+= Examples
+
+== Basic usage (C++ layer)
+
+```cpp
+#define GMDG_LOGGER_ENABLED
+#include "gmdg_logger.hpp"
+
+int main()
+{
+    GMDG_Logger_Initialize("app.log");
+
+    LOG_DEBUG  ("PHYSICS", "Broadphase rebuilt");
+    LOG_INFO   ("NETWORK", "Client connected");
+    LOG_WARNING("AUDIO",   "Voice pool exhausted");
+    LOG_ERROR  ("RENDER",  "Failed to compile shader");
+
+    GMDG_Logger_Shutdown();
+}
+```
+
+`GMDG_Logger_Initialize(path)` opens (or appends to) the given file once, at startup, from a single
+thread. `LOG_DEBUG`/`LOG_INFO`/`LOG_WARNING`/`LOG_ERROR` take a category and a `std::format`-style
+message and may be called from any thread, at any time between `Initialize` and `Shutdown`.
+`GMDG_Logger_Shutdown()` stops the background writer and closes the file — call it once, and make
+sure no other thread is still calling `LOG_*` when you do.
+
+== Formatted messages
+
+```cpp
+LOG_INFO ("AI",  "Enemy count: {}", count);
+LOG_ERROR("NET", "Failed after {} retries ({})", retries, reason);
+```
+
+A plain literal with no arguments (as in the basic-usage example above) still works exactly the
+same way — a format string with no placeholders is just its own text. Because the format call
+lives inside the macro's own arguments, disabling the logger (`GMDG_LOGGER_ENABLED` undefined)
+drops the formatting work entirely along with everything else — this is why `LOG_*` is preferred
+over building a string yourself before the call.
+
+For a message that's already in an owned buffer, or longer than the `MessageBufferSize` (1024-byte)
+formatting buffer, call the C API directly with an explicit length to skip formatting entirely:
+
+```cpp
+std::string msg = ReadFromNetwork();
+GMDG_Log(GMDG_LOG_INFO, "NET", 3, msg.c_str(), static_cast<uint32_t>(msg.size()));
+```
+
+== Naming threads
+
+```cpp
+void WorkerThreadMain(int index)
+{
+    LOG_SET_THREAD_NAME(std::format("WorkerPool-{}", index));
+    // ... LOG_* calls from here on carry "WorkerPool-<index>" instead of a raw, run-specific id
+}
+```
+
+Every record carries a thread name. By default it's an automatic `"Thread-<id>"` fallback derived
+from the OS thread id the first time that thread logs. `LOG_SET_THREAD_NAME`, typically called once
+at the top of a thread's entry function, gives it a stable, meaningful name instead — unlike
+category, this takes a runtime string, since worker threads are spawned dynamically and can't be
+tagged with a compile-time literal.
+
+== Checking for dropped records
+
+```cpp
+uint64_t dropped = GMDG_Logger_GetDroppedRecordCount();
+```
+
+Under sustained, extreme burst logging the async writer can drop records rather than block the
+calling thread. Call this if you need to know whether that happened for the current
+`Initialize`/`Shutdown` session.
+
+== Reading a capture file's header directly (C API)
+
+```cpp
+#include "gmdg_logger.h"
+#include <cstdio>
+
+GMDGLogFileHeader header{};
+FILE* file = std::fopen("app.log", "rb");
+std::fread(&header, sizeof(header), 1, file);
+
+if (GMDG_Logger_Validate_File_Header(&header) != GMDG_SUCCESS)
+{
+    std::fprintf(stderr, "app.log: not a valid gmdg_logger capture\n");
+}
+
+std::fclose(file);
+```
+
+`GMDG_Logger_Validate_File_Header` checks the magic bytes, format version, and header size before a
+reader trusts the records that follow. In practice, prefer `gmdg_logger_gui` to view a capture
+rather than writing your own reader, unless you have a specific tooling need — the record layout in
+@public-api (`GMDGLogRecord` plus raw thread-name/category/message bytes) is what a custom reader
+would need to walk.
