@@ -6,12 +6,14 @@
 
 using namespace GMDGLoggerGUI;
 
-ActionSubscriber<ShutdownAction> ShutdownAction::sActionRegistration("ShutdownAction");
+ActionSubscriber<ShutdownAction> ShutdownAction::s_actionRegistration("ShutdownAction");
 
-bool ShutdownAction::Execute(void* t_context)
-{        
+bool ShutdownAction::Execute(void* const t_context)
+{
+    GMDG_ASSERT(t_context != nullptr);
+
     ModelHandler& modelHandler = *reinterpret_cast<ModelHandler*>(t_context);
-    
+
     modelHandler.ShutdownApplication();
 
     return true;

@@ -13,16 +13,16 @@ namespace GMDGLoggerGUI
         using ActionQueue = std::vector<std::unique_ptr<Action>>;
         
         template <typename... Args>
-        void AddAction(const ActionKey& t_key, Args&&... args)
+        void AddAction(const ActionKey& t_key, Args&&... t_args)
         {
             GMDG_ASSERT_WITH_MESSAGE(Registry<Args...>().contains(t_key), "unregistered action key: {}", t_key);
             if (!Registry<Args...>().contains(t_key)) return;
 
-            mActionQueue.push_back(Registry<Args...>().at(t_key)(std::forward<Args>(args)...));
+            m_actionQueue.push_back(Registry<Args...>().at(t_key)(std::forward<Args>(t_args)...));
         }
 
     private:
-        ActionQueue mActionQueue;
+        ActionQueue m_actionQueue;
 
         void ExecuteActions(ModelHandler& t_modelHandler);
 
@@ -33,7 +33,7 @@ namespace GMDGLoggerGUI
         void Initialize();
         void Update(ModelHandler& t_modelHandler);
 
-        inline const ActionQueue& GetActionQueue() const { return mActionQueue; }
-        inline ActionQueue& GetActionQueue() { return mActionQueue; }
+        inline const ActionQueue& GetActionQueue() const { return m_actionQueue; }
+        inline ActionQueue& GetActionQueue() { return m_actionQueue; }
     };
 }

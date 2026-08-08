@@ -11,43 +11,39 @@
 
 using namespace GMDGLoggerGUI;
 
-// Mind the bools initialization is the initial state
-Application::Application()
-    : mIsRunning(true) {}
-
 void Application::Initialize()
 {
-    mModelHandler.Initialize();
-    mViewHandler.Initialize();   
+    m_modelHandler.Initialize();
+    m_viewHandler.Initialize();
 }
 
 void Application::Run()
-{    
+{
     // Intialize
-    {        
-        mModelHandler.Initialize();
-        mControlHandler.Initialize();
-        mViewHandler.Initialize();
+    {
+        m_modelHandler.Initialize();
+        m_controlHandler.Initialize();
+        m_viewHandler.Initialize();
     }
 
-    while(mModelHandler.IsApplicationRunning())
+    while(m_modelHandler.IsApplicationRunning())
     {
-        mModelHandler.Update();
-        mViewHandler.Update(mControlHandler);
-        mControlHandler.Update(mModelHandler);
+        m_modelHandler.Update();
+        m_viewHandler.Update(m_controlHandler, m_modelHandler);
+        m_controlHandler.Update(m_modelHandler);
     }
 
     // Shutdown
     {
-        mViewHandler.Shutdown();
-        mModelHandler.Shutdown();
+        m_viewHandler.Shutdown();
+        m_modelHandler.Shutdown();
     }
 
-    mModelHandler.Shutdown();
+    m_modelHandler.Shutdown();
 }
 
 void Application::Shutdown()
 {
     // no cleanup should be made, since the OS already clean the application memory
-    mIsRunning = false;
+    m_isRunning = false;
 }

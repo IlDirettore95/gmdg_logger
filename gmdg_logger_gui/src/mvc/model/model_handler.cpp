@@ -8,92 +8,99 @@ using namespace GMDGLoggerGUI;
 
 void ModelHandler::Initialize()
 {
-    mError = GMDG_UNKNOWN;
+    m_error = GMDG_UNKNOWN;
 }
 
 void ModelHandler::Update()
 {
-    if (mError != GMDG_SUCCESS) return;
+    if (m_error != GMDG_SUCCESS) return;
 
     LogRecord record{};
 
     while (ReadRecord(record))
     {
-        mLogs.emplace_back(std::move(record));
-        mThreadNameSet.emplace(mLogs.back().thread_name);
-        mCategorySet.emplace(mLogs.back().category);
+        m_logs.emplace_back(std::move(record));
+        m_threadNameSet.emplace(m_logs.back().ThreadName);
+        m_categorySet.emplace(m_logs.back().Category);
 
         // std::println("[{}] [{}] [{}] : {}",
-        //              mLogs.back().thread_id,
-        //              mLogs.back().category,
-        //              mLogs.back().severity,
-        //              mLogs.back().message);
+        //              m_logs.back().ThreadId,
+        //              m_logs.back().Category,
+        //              m_logs.back().Severity,
+        //              m_logs.back().Message);
     }
 
-    mFile.clear();
+    m_file.clear();
 }
 
 void ModelHandler::Shutdown() {}
 
 void ModelHandler::LoadFile(const std::string& t_path)
 {
-    if (mFile.is_open())
+    GMDG_ASSERT(!t_path.empty());
+
+    if (m_file.is_open())
     {
-        mFile.close();
+        m_file.close();
     }
-    mFile.clear();
+    m_file.clear();
 
-    mLogs.clear();
-    mThreadNameSet.clear();
-    mCategorySet.clear();
-    mError = GMDG_UNKNOWN;
-    mHasAttemptedLoad = true;
+    m_logs.clear();
+    m_threadNameSet.clear();
+    m_categorySet.clear();
+    m_error = GMDG_UNKNOWN;
+    m_hasAttemptedLoad = true;
 
-    mFile.open(t_path, std::ios::binary);
+    m_file.open(t_path, std::ios::binary);
 
-    if (!mFile)
+    if (!m_file)
     {
         return;
     }
 
     GMDGLogFileHeader header{};
 
-    if (!mFile.read(reinterpret_cast<char*>(&header), sizeof(header)))
+    if (!m_file.read(reinterpret_cast<char*>(&header), sizeof(header)))
     {
         return;
     }
 
-    mError = GMDG_Logger_Validate_File_Header(&header);
+    m_error = GMDG_Logger_Validate_File_Header(&header);
 }
 
 bool ModelHandler::ReadRecord(LogRecord& t_record)
 {
+    static uint32_t s_nextId = 1;
+
+    GMDG_ASSERT(m_file.is_open());
+
     GMDGLogRecord record{};
 
-    if (!mFile.read(reinterpret_cast<char*>(&record), sizeof(record)))
+    if (!m_file.read(reinterpret_cast<char*>(&record), sizeof(record)))
     {
         return false;
     }
 
-    t_record.timestamp_ns = record.timestamp_ns;
-    t_record.thread_id    = record.thread_id;
-    t_record.severity     = record.severity;
+    t_record.Id           = s_nextId++;
+    t_record.Timestamp_Ns = record.timestamp_ns;
+    t_record.ThreadId     = record.thread_id;
+    t_record.Severity     = record.severity;
 
-    t_record.thread_name.resize(record.thread_name_len);
-    t_record.category.resize(record.category_len);
-    t_record.message.resize(record.message_len);
+    t_record.ThreadName.resize(record.thread_name_len);
+    t_record.Category.resize(record.category_len);
+    t_record.Message.resize(record.message_len);
 
-    if (!mFile.read(t_record.thread_name.data(), static_cast<std::streamsize>(record.thread_name_len)))
+    if (!m_file.read(t_record.ThreadName.data(), static_cast<std::streamsize>(record.thread_name_len)))
     {
         return false;
     }
 
-    if (!mFile.read(t_record.category.data(), static_cast<std::streamsize>(record.category_len)))
+    if (!m_file.read(t_record.Category.data(), static_cast<std::streamsize>(record.category_len)))
     {
         return false;
     }
 
-    if (!mFile.read(t_record.message.data(), static_cast<std::streamsize>(record.message_len)))
+    if (!m_file.read(t_record.Message.data(), static_cast<std::streamsize>(record.message_len)))
     {
         return false;
     }

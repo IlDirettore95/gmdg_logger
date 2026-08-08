@@ -8,16 +8,17 @@
 #include "gmdg_logger.h"
 
 namespace GMDGLoggerGUI
-{  
+{
     struct LogRecord
     {
-        uint64_t timestamp_ns = 0;
-        uint32_t thread_id    = 0;
-        uint32_t severity     = 0;
+        uint32_t Id           = 0;
+        uint64_t Timestamp_Ns = 0;
+        uint32_t ThreadId     = 0;
+        uint32_t Severity     = 0;
 
-        std::string thread_name;
-        std::string category;
-        std::string message;
+        std::string ThreadName;
+        std::string Category;
+        std::string Message;
     };
 
     class ModelHandler
@@ -33,36 +34,36 @@ namespace GMDGLoggerGUI
         void LoadFile(const std::string& t_path);
 
         [[nodiscard]]
-        inline const std::vector<LogRecord>& GetLogs() const { return mLogs; }
+        inline const std::vector<LogRecord>& GetLogs() const { return m_logs; }
 
         [[nodiscard]]
-        inline const std::unordered_set<std::string>& GetThreadNames() const { return mThreadNameSet; }
+        inline const std::unordered_set<std::string>& GetThreadNames() const { return m_threadNameSet; }
 
         [[nodiscard]]
-        inline const std::unordered_set<std::string>& GetCategories() const { return mCategorySet; }
+        inline const std::unordered_set<std::string>& GetCategories() const { return m_categorySet; }
 
         [[nodiscard]]
-        inline GMDGLogFileValidationResult GetFileValidationError() const { return mError; }
+        inline GMDGLogFileValidationResult GetFileValidationError() const { return m_error; }
 
         [[nodiscard]]
-        inline bool HasAttemptedLoad() const { return mHasAttemptedLoad; }
+        inline bool HasAttemptedLoad() const { return m_hasAttemptedLoad; }
 
-        inline void ShutdownApplication() { mIsApplicationRunning = false; }
+        inline void ShutdownApplication() { m_isApplicationRunning = false; }
 
         [[nodiscard]]
-        inline bool IsApplicationRunning() const { return mIsApplicationRunning; }
+        inline bool IsApplicationRunning() const { return m_isApplicationRunning; }
 
     private:
-        bool mIsApplicationRunning = true;
-        bool mHasAttemptedLoad = false;
+        bool m_isApplicationRunning = true;
+        bool m_hasAttemptedLoad = false;
 
-        std::ifstream mFile;
-        std::vector<LogRecord> mLogs;
-        std::unordered_set<std::string> mThreadNameSet;
-        std::unordered_set<std::string> mCategorySet;
-        GMDGLogFileValidationResult mError = GMDG_UNKNOWN;
+        std::ifstream m_file;
+        std::vector<LogRecord> m_logs;
+        std::unordered_set<std::string> m_threadNameSet;
+        std::unordered_set<std::string> m_categorySet;
+        GMDGLogFileValidationResult m_error = GMDG_UNKNOWN;
 
         [[nodiscard]]
-        bool ReadRecord(LogRecord& record);
+        bool ReadRecord(LogRecord& t_record);
     };
 }

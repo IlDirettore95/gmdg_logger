@@ -14,9 +14,9 @@ namespace GMDGLoggerGUI
     {
     public:
         virtual ~Action() = default;
-        
+
         virtual const char* GetName() const = 0;
-        virtual bool Execute(void* t_context) = 0;
+        virtual bool Execute(void* const t_context) = 0;
     };
 
 
@@ -28,20 +28,22 @@ namespace GMDGLoggerGUI
     template <typename... Args>
     using ActionRegistry = std::unordered_map<ActionKey, ActionFactory<Args...>>;
     template <typename... Args>
-    ActionRegistry<Args...>& Registry() 
+    ActionRegistry<Args...>& Registry()
     {
-        static ActionRegistry<Args...> registry;
-        return registry;
+        static ActionRegistry<Args...> s_registry;
+        return s_registry;
     }
 
     template <typename T, typename... Args>
     struct ActionSubscriber
     {
-        ActionSubscriber(const ActionKey& key) 
+        ActionSubscriber(const ActionKey& t_key)
         {
-            Registry<Args...>()[key] = [](Args... args) 
-            { 
-                return std::make_unique<T>(std::forward<Args>(args)...); 
+            GMDG_ASSERT(!t_key.empty());
+
+            Registry<Args...>()[t_key] = [](Args... t_args)
+            {
+                return std::make_unique<T>(std::forward<Args>(t_args)...);
             };
         }
     };

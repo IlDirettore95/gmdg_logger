@@ -1,6 +1,8 @@
 #define GMDG_LOGGER_ENABLED
 #include "gmdg_logger.hpp"
 
+#include "mvc/view/table_layout.hpp"
+
 #include <cstdio>
 #include <format>
 #include <string>
@@ -297,6 +299,53 @@ namespace
 
         return message == "int=42 neg=-7 dbl=2.5 str=hello bool=true ch=X";
     }
+
+    // Verifies the column-width floor is a true clamp: values already at or above the
+    // minimum pass through unchanged -- this is the common case, a column not being
+    // dragged small, and must not perturb a width the user hasn't touched.
+    bool TestClampToMinWidthPassesThroughValuesAboveMinimum()
+    {
+        return GMDGLoggerGUI::TableLayout::ClampToMinWidth(200.0f, 150.0f) == 200.0f;
+    }
+
+    // Verifies a width dragged below the configured minimum is snapped exactly up to that
+    // minimum -- this is the core behavior RenderTable() relies on to stop columns from
+    // being resized down to a sliver.
+    bool TestClampToMinWidthRaisesValuesBelowMinimum()
+    {
+        return GMDGLoggerGUI::TableLayout::ClampToMinWidth(10.0f, 150.0f) == 150.0f;
+    }
+
+    // Verifies the exact-equal boundary is treated as already satisfying the minimum (no
+    // off-by-one clamp), matching the "> currentWidth + epsilon" comparison used at the
+    // call site to avoid a snap-back feedback loop every frame.
+    bool TestClampToMinWidthIsIdempotentAtExactBoundary()
+    {
+        return GMDGLoggerGUI::TableLayout::ClampToMinWidth(150.0f, 150.0f) == 150.0f;
+    }
+
+    // Verifies a single-line message (lineCount == 1) gets exactly one line of height plus
+    // padding -- the "short-message rows stay compact" requirement, expressed as a
+    // fabricated-input unit test independent of any live ImGui font measurement.
+    bool TestComputeRowHeightForSingleLineMatchesLineHeightPlusPadding()
+    {
+        return GMDGLoggerGUI::TableLayout::ComputeRowHeight(1, 16.0f, 4.0f) == 20.0f;
+    }
+
+    // Verifies a multi-line message scales linearly with line count -- the "row grows to
+    // fit the whole wrapped message" requirement, expressed as a fabricated-input unit test.
+    bool TestComputeRowHeightForMultipleLinesScalesLinearly()
+    {
+        return GMDGLoggerGUI::TableLayout::ComputeRowHeight(5, 16.0f, 4.0f) == 84.0f; // 5 * 16 + 4
+    }
+
+    // Verifies a pathological lineCount of 0 (should never happen in production -- even an
+    // empty message measures as 1 line -- but a defensive floor exists) still produces a
+    // sane, non-zero row height rather than collapsing the row to just its padding.
+    bool TestComputeRowHeightClampsNonPositiveLineCountToOne()
+    {
+        return GMDGLoggerGUI::TableLayout::ComputeRowHeight(0, 16.0f, 4.0f) == 20.0f; // treated as lineCount == 1
+    }
 }
 
 int main()
@@ -334,6 +383,42 @@ int main()
     if (!TestFastPathFormattedMessageRoundTrips())
     {
         std::fprintf(stderr, "TestFastPathFormattedMessageRoundTrips failed\n");
+        return 1;
+    }
+
+    if (!TestClampToMinWidthPassesThroughValuesAboveMinimum())
+    {
+        std::fprintf(stderr, "TestClampToMinWidthPassesThroughValuesAboveMinimum failed\n");
+        return 1;
+    }
+
+    if (!TestClampToMinWidthRaisesValuesBelowMinimum())
+    {
+        std::fprintf(stderr, "TestClampToMinWidthRaisesValuesBelowMinimum failed\n");
+        return 1;
+    }
+
+    if (!TestClampToMinWidthIsIdempotentAtExactBoundary())
+    {
+        std::fprintf(stderr, "TestClampToMinWidthIsIdempotentAtExactBoundary failed\n");
+        return 1;
+    }
+
+    if (!TestComputeRowHeightForSingleLineMatchesLineHeightPlusPadding())
+    {
+        std::fprintf(stderr, "TestComputeRowHeightForSingleLineMatchesLineHeightPlusPadding failed\n");
+        return 1;
+    }
+
+    if (!TestComputeRowHeightForMultipleLinesScalesLinearly())
+    {
+        std::fprintf(stderr, "TestComputeRowHeightForMultipleLinesScalesLinearly failed\n");
+        return 1;
+    }
+
+    if (!TestComputeRowHeightClampsNonPositiveLineCountToOne())
+    {
+        std::fprintf(stderr, "TestComputeRowHeightClampsNonPositiveLineCountToOne failed\n");
         return 1;
     }
 

@@ -347,6 +347,37 @@ showed the smaller buffers dropping the majority of records under bursty multi-t
 usage patterns that get anywhere close to that burstiness should either tolerate drops (and monitor
 `GMDG_Logger_GetDroppedRecordCount()`) or have the buffer size / flush interval tuned further.
 
+== Log table column and row sizing
+
+`ViewHandler::RenderTable()` (`gmdg_logger_gui/src/mvc/view/view_handler.cpp`) enforces a minimum
+width per column and grows a row's height to fully show a wrapped multi-line message, neither of
+which `Dear ImGui` tables support natively:
+
+- *Minimum column width.* ImGui tables have no per-column width floor beyond a few built-in
+  pixels, and no public getter for a column's current width. `RenderTable()` submits headers
+  manually (instead of `TableHeadersRow()`) so it can read each column's live width via
+  `GetContentRegionAvail().x` once per column per frame, and snap it back with
+  `TableSetColumnWidth()` if the user drags it below the configured floor. `TableSetColumnWidth()`
+  is declared in `imgui_internal.h`, not the public `imgui.h`, in the vendored ImGui version this
+  project uses — `view_handler.cpp` includes `imgui_internal.h` for this reason.
+- *Auto-growing message rows.* `ImGuiListClipper`, used for the table's virtualized scrolling,
+  assumes every row has the same height and cannot support wrapped rows of differing heights.
+  `RenderTable()` instead caches each visible row's wrapped height (via
+  `CalcTextSize(message, nullptr, false, wrapWidth).y`, the same measurement `TextWrapped()` uses
+  internally) as a prefix sum, and manually culls to the on-screen range each frame with a binary
+  search plus two spacer rows — so scrolling stays proportional to the number of *visible* rows,
+  not the total row count, while every message wraps and is never clipped.
+
+The two pieces of pure sizing math behind this — clamping a width to a minimum, and turning a line
+count into a row height — live in `gmdg_logger_gui/src/mvc/view/table_layout.hpp` / `.cpp`
+(namespace `GMDGLoggerGUI::TableLayout`) with no ImGui dependency, so they can be linked into
+`gmdg_logger_tests` and unit-tested directly:
+
+```cpp
+[[nodiscard]] float ClampToMinWidth(const float t_width, const float t_minWidth);
+[[nodiscard]] float ComputeRowHeight(const int32_t t_lineCount, const float t_lineHeight, const float t_verticalPadding);
+```
+
 #pagebreak()
 
 // ===========================================================================
@@ -374,6 +405,10 @@ usage patterns that get anywhere close to that burstiness should either tolerate
   severity set.
 - *`GMDG_Log` calls are not synchronized against `GMDG_Logger_Shutdown`.* A log call racing with
   shutdown on another thread can access the writer mid-teardown.
+- *The log table's row-height cache is rebuilt only when the filtered row set or the Message
+  column's width actually changes between frames*, not on every frame — so a column resize or a
+  filter/search edit takes effect starting the next frame, not the same one (imperceptible in
+  practice).
 
 #pagebreak()
 
@@ -395,3 +430,11 @@ usage patterns that get anywhere close to that burstiness should either tolerate
   threads first (see @limitations).
 - *Opening the binary log file in a text editor expecting readable text.* It is a binary format;
   use `gmdg_logger_gui`, or the record layout above if you need to write your own reader.
+- *Feeding `ImGuiListClipper` rows of differing heights.* It measures one row once and multiplies
+  by index for all scroll/seek math — wrapped rows of varying height will desync its scrollbar and
+  visible-range calculations. `RenderTable()`'s manual culling (see @async-writer) exists
+  specifically to avoid this.
+- *Re-implementing ImGui's word-wrap algorithm to predict a row's height.* Always measure with the
+  real `CalcTextSize(text, nullptr, false, wrapWidth)` so the computed height can never disagree
+  with what `TextWrapped()` actually renders — a parallel wrap algorithm could drift and
+  reintroduce clipping.

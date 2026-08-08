@@ -15,14 +15,14 @@ void ControlHandler::Update(ModelHandler& t_modelHandler)
 
 void ControlHandler::ExecuteActions(ModelHandler& t_modelHandler)
 {
-    for (auto& action : mActionQueue)
+    for (auto& action : m_actionQueue)
     {
-        bool result = action->Execute(&t_modelHandler);
+        const bool result = action->Execute(&t_modelHandler);
         if (!result)
         {
             std::println("{0} action failed!", action->GetName());
         }
     }
 
-    mActionQueue.clear();
+    m_actionQueue.clear();
 }

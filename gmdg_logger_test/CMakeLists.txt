@@ -33,12 +33,23 @@ add_executable(gmdg_logger_tests)
 target_sources(gmdg_logger_tests
     PRIVATE
         src/tests.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../gmdg_logger_gui/src/mvc/view/table_layout.cpp
+)
+
+target_include_directories(gmdg_logger_tests
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../gmdg_logger_gui/src
 )
 
 target_link_libraries(gmdg_logger_tests
-    PRIVATE 
+    PRIVATE
         gmdg_logger
+        gmdg_asserting
 )
+
+if (GMDG_ASSERT_ENABLE)
+    target_compile_definitions(gmdg_logger_tests PRIVATE GMDG_ASSERT_ENABLE)
+endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_link_libraries(gmdg_logger_gui

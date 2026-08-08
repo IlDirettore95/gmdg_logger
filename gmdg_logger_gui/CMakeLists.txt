@@ -16,6 +16,8 @@ target_sources(gmdg_logger_gui
 
         src/mvc/view/view_handler.hpp
         src/mvc/view/view_handler.cpp
+        src/mvc/view/table_layout.hpp
+        src/mvc/view/table_layout.cpp
 
         src/application.hpp
         src/application.cpp
