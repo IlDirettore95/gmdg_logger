@@ -201,6 +201,8 @@ void ViewHandler::Render(ControlHandler& t_controlHandler, ModelHandler& t_model
 
     RenderOpenFileButton(t_controlHandler);
     ImGui::SameLine();
+    RenderClearLoadedFileButton(t_controlHandler);
+    ImGui::SameLine();
     RenderAboutButton();
 
     ImGui::Separator();
@@ -264,6 +266,14 @@ void ViewHandler::RenderOpenFileButton(ControlHandler& t_controlHandler)
         {
             t_controlHandler.AddAction("OpenFileAction", std::string(path));
         }
+    }
+}
+
+void ViewHandler::RenderClearLoadedFileButton(ControlHandler& t_controlHandler)
+{
+    if (ImGui::Button("Clear##clear_loaded_file_button"))
+    {
+        t_controlHandler.AddAction("ClearLoadedFileAction");
     }
 }
 
@@ -413,11 +423,11 @@ void ViewHandler::RenderFileHeaderValidationError()
         {
             ImGui::TextUnformatted("Loaded file was not a gmdg_logger file!");
         } break;
-        case GMDG_UNUPPORTED_VERSION:
+        case GMDG_UNSUPPORTED_VERSION:
         {
             ImGui::TextUnformatted("Loaded file version in not supported!");
         } break;
-        case GMDG_UNUPPORTED_FILE_HEADER:
+        case GMDG_UNSUPPORTED_FILE_HEADER:
         {
             ImGui::TextUnformatted("Loaded file is corrupted!");
         } break;

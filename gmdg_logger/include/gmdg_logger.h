@@ -17,11 +17,11 @@ typedef enum GMDGLogSeverity
 
 typedef enum GMDGLogFileValidationResult
 {
-    GMDG_SUCCESS                = 0,
-    GMDG_INVALID_MAGIC          = 1,
-    GMDG_UNUPPORTED_VERSION     = 2,
-    GMDG_UNUPPORTED_FILE_HEADER = 3,
-    GMDG_UNKNOWN                = 4
+    GMDG_SUCCESS                 = 0,
+    GMDG_INVALID_MAGIC           = 1,
+    GMDG_UNSUPPORTED_VERSION     = 2,
+    GMDG_UNSUPPORTED_FILE_HEADER = 3,
+    GMDG_UNKNOWN                 = 4
 } GMDGLogFileValidationResult;
 
 typedef enum GMDGBool

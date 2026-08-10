@@ -22,7 +22,6 @@ namespace GMDGLoggerGUI
         Application& operator = (const Application& t_application) = delete;
 
     public:
-        void Initialize();
         void Run();
         void Shutdown();
 

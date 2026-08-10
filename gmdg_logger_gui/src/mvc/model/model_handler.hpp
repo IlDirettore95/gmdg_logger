@@ -32,6 +32,7 @@ namespace GMDGLoggerGUI
         void Shutdown();
 
         void LoadFile(const std::string& t_path);
+        void ClearLoadedFile();
 
         [[nodiscard]]
         inline const std::vector<LogRecord>& GetLogs() const { return m_logs; }
@@ -56,6 +57,7 @@ namespace GMDGLoggerGUI
     private:
         bool m_isApplicationRunning = true;
         bool m_hasAttemptedLoad = false;
+        uint32_t m_nextId = 1;
 
         std::ifstream m_file;
         std::vector<LogRecord> m_logs;

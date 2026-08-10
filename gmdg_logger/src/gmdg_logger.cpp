@@ -334,12 +334,12 @@ GMDGLogFileValidationResult GMDG_Logger_Validate_File_Header(const GMDGLogFileHe
 
     if (t_header->FormatVersion != LogFormatVersion)
     {
-        return GMDG_UNUPPORTED_VERSION;
+        return GMDG_UNSUPPORTED_VERSION;
     }
 
     if (t_header->RecordHeaderSize != sizeof(GMDGLogFileHeader))
     {
-        return GMDG_UNUPPORTED_FILE_HEADER;
+        return GMDG_UNSUPPORTED_FILE_HEADER;
     }
 
     return GMDG_SUCCESS;

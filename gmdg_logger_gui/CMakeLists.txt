@@ -8,6 +8,8 @@ target_sources(gmdg_logger_gui
         src/mvc/controller/actions/shutdown_action.cpp
         src/mvc/controller/actions/open_file_action.hpp
         src/mvc/controller/actions/open_file_action.cpp
+        src/mvc/controller/actions/clear_loaded_file_action.hpp
+        src/mvc/controller/actions/clear_loaded_file_action.cpp
         src/mvc/controller/control_handler.hpp
         src/mvc/controller/control_handler.cpp
 

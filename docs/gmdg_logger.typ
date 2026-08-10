@@ -322,6 +322,25 @@ test/bench/GUI executables.
 + Link against, or load, the built DLL directly.
 
 // ===========================================================================
+= Dependencies
+
+== What this library depends on
+
+#table(
+  columns: (auto, auto, auto),
+  stroke: 0.5pt + rgb("#dddddd"),
+  inset: 6pt,
+  [*Dependency*], [*Kind*], [*Visibility*],
+  [C++23 standard library], [language/runtime], [n/a],
+  [`gmdg_asserting`], [sibling GMDG library], [`PRIVATE`],
+  [`<windows.h>`], [platform API], [n/a — no abstraction layer],
+)
+
+`gmdg_asserting` is linked `PRIVATE` on both the `gmdg_logger` and `gmdg_logger_c` targets, so it
+does not propagate to a consumer. `gmdg_logger.cpp` includes `<windows.h>` directly on both
+targets — there is no platform abstraction layer, so this library is Windows-only.
+
+// ===========================================================================
 = Examples
 
 == Basic usage (C++ layer)

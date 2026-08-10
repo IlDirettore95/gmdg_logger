@@ -11,12 +11,6 @@
 
 using namespace GMDGLoggerGUI;
 
-void Application::Initialize()
-{
-    m_modelHandler.Initialize();
-    m_viewHandler.Initialize();
-}
-
 void Application::Run()
 {
     // Intialize

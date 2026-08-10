@@ -28,6 +28,7 @@ namespace GMDGLoggerGUI
         static bool OpenFileDialog(GLFWwindow* const t_window, std::string& t_outPath);
         void Render(ControlHandler& t_controlHandler, ModelHandler& t_modelHandler);
         void RenderOpenFileButton(ControlHandler& t_controlHandler);
+        void RenderClearLoadedFileButton(ControlHandler& t_controlHandler);
         void RenderSeverityFilter();
         void RenderThreadFilter();
         void RenderCategoryFilter();

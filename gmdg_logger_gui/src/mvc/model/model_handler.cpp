@@ -6,10 +6,7 @@
 
 using namespace GMDGLoggerGUI;
 
-void ModelHandler::Initialize()
-{
-    m_error = GMDG_UNKNOWN;
-}
+void ModelHandler::Initialize() { }
 
 void ModelHandler::Update()
 {
@@ -66,12 +63,30 @@ void ModelHandler::LoadFile(const std::string& t_path)
     }
 
     m_error = GMDG_Logger_Validate_File_Header(&header);
+
+    if (m_error == GMDG_SUCCESS)
+    {
+        m_nextId = 1;
+    }
+}
+
+void ModelHandler::ClearLoadedFile()
+{
+    if (m_file.is_open())
+    {
+        m_file.close();
+    }
+    m_file.clear();
+    m_logs.clear();
+    m_threadNameSet.clear();
+    m_categorySet.clear();
+    m_error = GMDG_UNKNOWN;
+    m_hasAttemptedLoad = false;
+    m_nextId = 1;
 }
 
 bool ModelHandler::ReadRecord(LogRecord& t_record)
 {
-    static uint32_t s_nextId = 1;
-
     GMDG_ASSERT(m_file.is_open());
 
     GMDGLogRecord record{};
@@ -81,7 +96,7 @@ bool ModelHandler::ReadRecord(LogRecord& t_record)
         return false;
     }
 
-    t_record.Id           = s_nextId++;
+    t_record.Id           = m_nextId++;
     t_record.Timestamp_Ns = record.Timestamp_Ns;
     t_record.ThreadId     = record.ThreadId;
     t_record.Severity     = record.Severity;
