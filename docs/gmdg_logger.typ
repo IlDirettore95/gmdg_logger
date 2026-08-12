@@ -178,7 +178,7 @@ convenience layer of macros on top (`gmdg_logger.hpp`, `namespace GMDGLogger`).
   "function",
   "void GMDG_Log(\n    uint32_t t_severity,\n    const char* t_category, uint32_t t_categoryLength,\n    const char* t_message, uint32_t t_messageLength);",
 )[
-  Appends one record. The underlying entry point every `LOG_*` macro funnels through.
+  Appends one record. The underlying entry point every `GMDG_LOG_*` macro funnels through.
 ]
 
 #api-entry(
@@ -234,14 +234,38 @@ Only compiled when `GMDG_LOGGER_ENABLED` is defined before `#include "gmdg_logge
 
 #api-entry(
   "macro",
-  "LOG_DEBUG(t_category, t_format, ...)\nLOG_INFO(t_category, t_format, ...)\nLOG_WARNING(t_category, t_format, ...)\nLOG_ERROR(t_category, t_format, ...)",
+  "GMDG_LOG_DEBUG(t_category, t_format, ...)\nGMDG_LOG_INFO(t_category, t_format, ...)\nGMDG_LOG_WARNING(t_category, t_format, ...)\nGMDG_LOG_ERROR(t_category, t_format, ...)",
 )[
   Call `GMDGLogger::Log` with the corresponding `GMDGLogSeverity`. Compile to nothing when
   `GMDG_LOGGER_ENABLED` is undefined.
 ]
 
-#api-entry("macro", "LOG_SET_THREAD_NAME(t_name)")[
+#api-entry("macro", "GMDG_LOG_SET_THREAD_NAME(t_name)")[
   Calls `GMDGLogger::SetThreadName`. Compiles to nothing when `GMDG_LOGGER_ENABLED` is undefined.
+]
+
+#api-entry("macro", "GMDG_LOG_INITIALIZE(t_path)")[
+  Calls `GMDG_Logger_Initialize`. Compiles to `GMDG_TRUE` when `GMDG_LOGGER_ENABLED` is undefined,
+  so `if (!GMDG_LOG_INITIALIZE(...))`-style call sites still compile and never spuriously fail just
+  because logging is compiled out.
+]
+
+#api-entry("macro", "GMDG_LOG_SHUTDOWN()")[
+  Calls `GMDG_Logger_Shutdown`. Compiles to nothing when `GMDG_LOGGER_ENABLED` is undefined.
+]
+
+#api-entry("macro", "GMDG_LOG_SEVERITY_TO_STRING(t_severity)")[
+  Calls `GMDG_Logger_Severity_To_String`. Compiles to `""` when `GMDG_LOGGER_ENABLED` is undefined.
+]
+
+#api-entry("macro", "GMDG_LOG_VALIDATE_FILE_HEADER(t_header)")[
+  Calls `GMDG_Logger_Validate_File_Header`. Compiles to `GMDG_UNKNOWN` when `GMDG_LOGGER_ENABLED` is
+  undefined.
+]
+
+#api-entry("macro", "GMDG_LOG_GET_DROPPED_RECORD_COUNT()")[
+  Calls `GMDG_Logger_GetDroppedRecordCount`. Compiles to `0` when `GMDG_LOGGER_ENABLED` is
+  undefined.
 ]
 
 == Configuration <configuration>
@@ -254,10 +278,14 @@ wired in any `CMakeLists.txt`. The *consumer* `#define`s it before `#include "gm
 #include "gmdg_logger.hpp"
 ```
 
-If left undefined, all five C++-layer macros (`LOG_DEBUG`, `LOG_INFO`, `LOG_WARNING`, `LOG_ERROR`,
-`LOG_SET_THREAD_NAME`) compile to nothing — the intended way to compile logging out of a build
-entirely (e.g. a shipping configuration), at zero runtime cost. This switch only gates the C++
-convenience layer; the C API in `gmdg_logger.h` is unaffected and always compiled.
+Every function of the public C API (`gmdg_logger.h`) has a matching `GMDG_LOG_*` macro in the C++
+convenience layer (`gmdg_logger.hpp`). If `GMDG_LOGGER_ENABLED` is left undefined, every one of
+those macros compiles to nothing or a safe sentinel value (see each macro's entry above) — the
+intended way to compile logging out of a build entirely (e.g. a shipping configuration), at zero
+runtime cost. This switch only gates the C++ macro layer; the raw C API in `gmdg_logger.h` is
+unaffected and always compiled — a consumer that calls it directly instead of going through the
+`GMDG_LOG_*` macros (e.g. `gmdg_logger_bench`'s backend, which never defines
+`GMDG_LOGGER_ENABLED`) always gets the real behavior.
 
 #callout[
   *Build prerequisite, not part of this library's own API:* the top-level `CMakeLists.txt` also
@@ -311,8 +339,8 @@ test/bench/GUI executables.
 + `target_link_libraries(your_target PRIVATE gmdg_logger)` — `gmdg_logger/include` is a `PUBLIC`
   include directory on the target, so it propagates automatically; no separate
   `target_include_directories()` call is needed.
-+ `#define GMDG_LOGGER_ENABLED` before `#include "gmdg_logger.hpp"` to get the `LOG_*` macros (see
-  @configuration); omit the define to compile them out entirely.
++ `#define GMDG_LOGGER_ENABLED` before `#include "gmdg_logger.hpp"` to get the `GMDG_LOG_*` macros
+  (see @configuration); omit the define to compile them out entirely.
 
 *Shared/DLL target (`gmdg_logger_c`)* — for a C-ABI consumer that needs a DLL instead:
 
@@ -351,35 +379,36 @@ targets — there is no platform abstraction layer, so this library is Windows-o
 
 int main()
 {
-    GMDG_Logger_Initialize("app.log");
+    GMDG_LOG_INITIALIZE("app.log");
 
-    LOG_DEBUG  ("PHYSICS", "Broadphase rebuilt");
-    LOG_INFO   ("NETWORK", "Client connected");
-    LOG_WARNING("AUDIO",   "Voice pool exhausted");
-    LOG_ERROR  ("RENDER",  "Failed to compile shader");
+    GMDG_LOG_DEBUG  ("PHYSICS", "Broadphase rebuilt");
+    GMDG_LOG_INFO   ("NETWORK", "Client connected");
+    GMDG_LOG_WARNING("AUDIO",   "Voice pool exhausted");
+    GMDG_LOG_ERROR  ("RENDER",  "Failed to compile shader");
 
-    GMDG_Logger_Shutdown();
+    GMDG_LOG_SHUTDOWN();
 }
 ```
 
-`GMDG_Logger_Initialize(path)` opens (or appends to) the given file once, at startup, from a single
-thread. `LOG_DEBUG`/`LOG_INFO`/`LOG_WARNING`/`LOG_ERROR` take a category and a `std::format`-style
-message and may be called from any thread, at any time between `Initialize` and `Shutdown`.
-`GMDG_Logger_Shutdown()` stops the background writer and closes the file — call it once, and make
-sure no other thread is still calling `LOG_*` when you do.
+`GMDG_LOG_INITIALIZE(path)` opens (or appends to) the given file once, at startup, from a single
+thread. `GMDG_LOG_DEBUG`/`GMDG_LOG_INFO`/`GMDG_LOG_WARNING`/`GMDG_LOG_ERROR` take a category and a
+`std::format`-style message and may be called from any thread, at any time between
+`GMDG_LOG_INITIALIZE` and `GMDG_LOG_SHUTDOWN`. `GMDG_LOG_SHUTDOWN()` stops the background writer and
+closes the file — call it once, and make sure no other thread is still calling `GMDG_LOG_*` when
+you do.
 
 == Formatted messages
 
 ```cpp
-LOG_INFO ("AI",  "Enemy count: {}", count);
-LOG_ERROR("NET", "Failed after {} retries ({})", retries, reason);
+GMDG_LOG_INFO ("AI",  "Enemy count: {}", count);
+GMDG_LOG_ERROR("NET", "Failed after {} retries ({})", retries, reason);
 ```
 
 A plain literal with no arguments (as in the basic-usage example above) still works exactly the
 same way — a format string with no placeholders is just its own text. Because the format call
 lives inside the macro's own arguments, disabling the logger (`GMDG_LOGGER_ENABLED` undefined)
-drops the formatting work entirely along with everything else — this is why `LOG_*` is preferred
-over building a string yourself before the call.
+drops the formatting work entirely along with everything else — this is why `GMDG_LOG_*` is
+preferred over building a string yourself before the call.
 
 For a message that's already in an owned buffer, or longer than the `MessageBufferSize` (1024-byte)
 formatting buffer, call the C API directly with an explicit length to skip formatting entirely:
@@ -394,21 +423,21 @@ GMDG_Log(GMDG_LOG_INFO, "NET", 3, msg.c_str(), static_cast<uint32_t>(msg.size())
 ```cpp
 void WorkerThreadMain(int index)
 {
-    LOG_SET_THREAD_NAME(std::format("WorkerPool-{}", index));
-    // ... LOG_* calls from here on carry "WorkerPool-<index>" instead of a raw, run-specific id
+    GMDG_LOG_SET_THREAD_NAME(std::format("WorkerPool-{}", index));
+    // ... GMDG_LOG_* calls from here on carry "WorkerPool-<index>" instead of a raw, run-specific id
 }
 ```
 
 Every record carries a thread name. By default it's an automatic `"Thread-<id>"` fallback derived
-from the OS thread id the first time that thread logs. `LOG_SET_THREAD_NAME`, typically called once
-at the top of a thread's entry function, gives it a stable, meaningful name instead — unlike
+from the OS thread id the first time that thread logs. `GMDG_LOG_SET_THREAD_NAME`, typically called
+once at the top of a thread's entry function, gives it a stable, meaningful name instead — unlike
 category, this takes a runtime string, since worker threads are spawned dynamically and can't be
 tagged with a compile-time literal.
 
 == Checking for dropped records
 
 ```cpp
-uint64_t dropped = GMDG_Logger_GetDroppedRecordCount();
+uint64_t dropped = GMDG_LOG_GET_DROPPED_RECORD_COUNT();
 ```
 
 Under sustained, extreme burst logging the async writer can drop records rather than block the

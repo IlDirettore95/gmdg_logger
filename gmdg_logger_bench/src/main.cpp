@@ -222,12 +222,12 @@ int main()
     PrintStats("async (formatted, 0 args)", BenchmarkLatency(AsyncBackend, "bench_latency_fmt_0.log",
         [](uint32_t)
         {
-            LOG_INFO("BENCH", "latency message");
+            GMDG_LOG_INFO("BENCH", "latency message");
         }));
     PrintStats("async (formatted, 2 args)", BenchmarkLatency(AsyncBackend, "bench_latency_fmt_2.log",
         [](uint32_t i)
         {
-            LOG_INFO("BENCH", "latency message {} val {}", i, i * 2);
+            GMDG_LOG_INFO("BENCH", "latency message {} val {}", i, i * 2);
         }));
 
     std::println();
@@ -241,12 +241,12 @@ int main()
         BenchmarkThroughput(AsyncBackend, "bench_throughput_fmt_0.log", threadCount, "async (formatted, 0 args)",
             [](uint32_t)
             {
-                LOG_INFO("BENCH", "throughput message");
+                GMDG_LOG_INFO("BENCH", "throughput message");
             });
         BenchmarkThroughput(AsyncBackend, "bench_throughput_fmt_2.log", threadCount, "async (formatted, 2 args)",
             [](uint32_t i)
             {
-                LOG_INFO("BENCH", "throughput message {} val {}", i, i * 2);
+                GMDG_LOG_INFO("BENCH", "throughput message {} val {}", i, i * 2);
             });
     }
 

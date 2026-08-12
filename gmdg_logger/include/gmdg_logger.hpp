@@ -4,9 +4,9 @@
 
 #ifdef __cplusplus
 
-#ifdef GMDG_LOGGER_ENABLED
-
 #include "gmdg_logger.h"
+
+#ifdef GMDG_LOGGER_ENABLED
 
 #include <charconv>
 #include <cstddef>
@@ -153,28 +153,48 @@ namespace GMDGLogger
     }
 }
 
-#define LOG_DEBUG(cat, fmt, ...) \
+#define GMDG_LOG_DEBUG(cat, fmt, ...) \
     ::GMDGLogger::Log(GMDG_LOG_DEBUG, cat, fmt __VA_OPT__(,) __VA_ARGS__)
 
-#define LOG_INFO(cat, fmt, ...) \
+#define GMDG_LOG_INFO(cat, fmt, ...) \
     ::GMDGLogger::Log(GMDG_LOG_INFO, cat, fmt __VA_OPT__(,) __VA_ARGS__)
 
-#define LOG_WARNING(cat, fmt, ...) \
+#define GMDG_LOG_WARNING(cat, fmt, ...) \
     ::GMDGLogger::Log(GMDG_LOG_WARNING, cat, fmt __VA_OPT__(,) __VA_ARGS__)
 
-#define LOG_ERROR(cat, fmt, ...) \
+#define GMDG_LOG_ERROR(cat, fmt, ...) \
     ::GMDGLogger::Log(GMDG_LOG_ERROR, cat, fmt __VA_OPT__(,) __VA_ARGS__)
 
-#define LOG_SET_THREAD_NAME(name) \
+#define GMDG_LOG_SET_THREAD_NAME(name) \
     ::GMDGLogger::SetThreadName(name)
+
+#define GMDG_LOG_INITIALIZE(path) \
+    ::GMDG_Logger_Initialize(path)
+
+#define GMDG_LOG_SHUTDOWN() \
+    ::GMDG_Logger_Shutdown()
+
+#define GMDG_LOG_SEVERITY_TO_STRING(severity) \
+    ::GMDG_Logger_Severity_To_String(severity)
+
+#define GMDG_LOG_VALIDATE_FILE_HEADER(header) \
+    ::GMDG_Logger_Validate_File_Header(header)
+
+#define GMDG_LOG_GET_DROPPED_RECORD_COUNT() \
+    ::GMDG_Logger_GetDroppedRecordCount()
 
 #else
 
-#define LOG_DEBUG(cat, fmt, ...)
-#define LOG_INFO(cat, fmt, ...)
-#define LOG_WARNING(cat, fmt, ...)
-#define LOG_ERROR(cat, fmt, ...)
-#define LOG_SET_THREAD_NAME(name)
+#define GMDG_LOG_DEBUG(cat, fmt, ...)
+#define GMDG_LOG_INFO(cat, fmt, ...)
+#define GMDG_LOG_WARNING(cat, fmt, ...)
+#define GMDG_LOG_ERROR(cat, fmt, ...)
+#define GMDG_LOG_SET_THREAD_NAME(name)
+#define GMDG_LOG_INITIALIZE(path) (GMDG_TRUE)
+#define GMDG_LOG_SHUTDOWN()
+#define GMDG_LOG_SEVERITY_TO_STRING(severity) ("")
+#define GMDG_LOG_VALIDATE_FILE_HEADER(header) (GMDG_UNKNOWN)
+#define GMDG_LOG_GET_DROPPED_RECORD_COUNT() (0)
 
 #endif
 

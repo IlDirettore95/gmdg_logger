@@ -13,11 +13,11 @@ namespace
 
     void LogBurst(int t_index)
     {
-        LOG_SET_THREAD_NAME(std::format("WORKER-{}", t_index));
+        GMDG_LOG_SET_THREAD_NAME(std::format("WORKER-{}", t_index));
 
         for (int i = 0; i < kMessagesPerThread; ++i)
         {
-            LOG_INFO("APPLICATION", "Burst log message");
+            GMDG_LOG_INFO("APPLICATION", "Burst log message");
         }
     }
 
@@ -30,7 +30,7 @@ namespace
 
         GMDGLogFileHeader header{};
         if (std::fread(&header, sizeof(header), 1, file) != 1 ||
-            GMDG_Logger_Validate_File_Header(&header) != GMDG_SUCCESS)
+            GMDG_LOG_VALIDATE_FILE_HEADER(&header) != GMDG_SUCCESS)
         {
             std::fclose(file);
             return 0;
@@ -55,15 +55,15 @@ int main()
     // this run's contribution as a delta rather than assuming the file starts empty.
     const size_t recordsBefore = CountRecords("app.log");
 
-    GMDG_Logger_Initialize("app.log");
+    GMDG_LOG_INITIALIZE("app.log");
 
-    LOG_SET_THREAD_NAME("MAIN");
+    GMDG_LOG_SET_THREAD_NAME("MAIN");
 
-    LOG_DEBUG("APPLICATION.PHYSICS", "This is a debug");
-    LOG_INFO("APPLICATION.GRAPHICS", "This is an info");
-    LOG_WARNING("APPLICATION.AI", "This is a warning");
-    LOG_ERROR("APPLICATION.UI", "This is an error");
-    LOG_ERROR("APPLICATION.DEBUGGING", "Lorem ipsum dolor sit amet, consectetur adipiscing elit," 
+    GMDG_LOG_DEBUG("APPLICATION.PHYSICS", "This is a debug");
+    GMDG_LOG_INFO("APPLICATION.GRAPHICS", "This is an info");
+    GMDG_LOG_WARNING("APPLICATION.AI", "This is a warning");
+    GMDG_LOG_ERROR("APPLICATION.UI", "This is an error");
+    GMDG_LOG_ERROR("APPLICATION.DEBUGGING", "Lorem ipsum dolor sit amet, consectetur adipiscing elit," 
                                        "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, "
                                        "quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. "
                                        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
@@ -80,9 +80,9 @@ int main()
         thread.join();
     }
 
-    GMDG_Logger_Shutdown();
+    GMDG_LOG_SHUTDOWN();
 
-    const uint64_t dropped = GMDG_Logger_GetDroppedRecordCount();
+    const uint64_t dropped = GMDG_LOG_GET_DROPPED_RECORD_COUNT();
     const size_t totalLogged = 4 + static_cast<size_t>(kThreadCount) * kMessagesPerThread;
     const size_t recordsAfter = CountRecords("app.log");
     const size_t recordsWritten = recordsAfter - recordsBefore;

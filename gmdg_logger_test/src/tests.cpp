@@ -22,7 +22,7 @@ namespace
     {
         for (int i = 0; i < kMessagesPerThread; ++i)
         {
-            LOG_INFO("TEST", "Async writer burst message");
+            GMDG_LOG_INFO("TEST", "Async writer burst message");
         }
     }
 
@@ -35,7 +35,7 @@ namespace
 
         GMDGLogFileHeader header{};
         if (std::fread(&header, sizeof(header), 1, file) != 1 ||
-            GMDG_Logger_Validate_File_Header(&header) != GMDG_SUCCESS)
+            GMDG_LOG_VALIDATE_FILE_HEADER(&header) != GMDG_SUCCESS)
         {
             std::fclose(file);
             return 0;
@@ -60,7 +60,7 @@ namespace
     {
         const size_t recordsBefore = CountRecords(kTestLogPath);
 
-        if (!GMDG_Logger_Initialize(kTestLogPath)) return false;
+        if (!GMDG_LOG_INITIALIZE(kTestLogPath)) return false;
 
         std::vector<std::thread> threads;
         threads.reserve(kThreadCount);
@@ -73,9 +73,9 @@ namespace
             thread.join();
         }
 
-        GMDG_Logger_Shutdown();
+        GMDG_LOG_SHUTDOWN();
 
-        const uint64_t dropped = GMDG_Logger_GetDroppedRecordCount();
+        const uint64_t dropped = GMDG_LOG_GET_DROPPED_RECORD_COUNT();
         const size_t totalLogged = static_cast<size_t>(kThreadCount) * kMessagesPerThread;
         const size_t recordsWritten = CountRecords(kTestLogPath) - recordsBefore;
 
@@ -91,7 +91,7 @@ namespace
 
         GMDGLogFileHeader header{};
         if (std::fread(&header, sizeof(header), 1, file) != 1 ||
-            GMDG_Logger_Validate_File_Header(&header) != GMDG_SUCCESS)
+            GMDG_LOG_VALIDATE_FILE_HEADER(&header) != GMDG_SUCCESS)
         {
             std::fclose(file);
             return {};
@@ -131,7 +131,7 @@ namespace
 
         GMDGLogFileHeader header{};
         if (std::fread(&header, sizeof(header), 1, file) != 1 ||
-            GMDG_Logger_Validate_File_Header(&header) != GMDG_SUCCESS)
+            GMDG_LOG_VALIDATE_FILE_HEADER(&header) != GMDG_SUCCESS)
         {
             std::fclose(file);
             return {};
@@ -162,14 +162,14 @@ namespace
         constexpr const char* path = "thread_names_test.log";
         std::remove(path);
 
-        if (!GMDG_Logger_Initialize(path)) return false;
+        if (!GMDG_LOG_INITIALIZE(path)) return false;
 
         std::vector<std::thread> threads;
         threads.reserve(kThreadCount);
         for (int i = 0; i < kThreadCount; ++i)
         {
             threads.emplace_back([i] {
-                LOG_SET_THREAD_NAME(std::format("WorkerPool-{}", i));
+                GMDG_LOG_SET_THREAD_NAME(std::format("WorkerPool-{}", i));
                 LogBurst();
             });
         }
@@ -178,7 +178,7 @@ namespace
             thread.join();
         }
 
-        GMDG_Logger_Shutdown();
+        GMDG_LOG_SHUTDOWN();
 
         const auto identities = ReadThreadIdentities(path);
         std::remove(path);
@@ -217,13 +217,13 @@ namespace
         constexpr const char* path = "thread_name_truncation_test.log";
         std::remove(path);
 
-        if (!GMDG_Logger_Initialize(path)) return false;
+        if (!GMDG_LOG_INITIALIZE(path)) return false;
 
         const std::string longName(100, 'A');
-        LOG_SET_THREAD_NAME(longName);
-        LOG_INFO("TEST", "truncation test message");
+        GMDG_LOG_SET_THREAD_NAME(longName);
+        GMDG_LOG_INFO("TEST", "truncation test message");
 
-        GMDG_Logger_Shutdown();
+        GMDG_LOG_SHUTDOWN();
 
         const auto identities = ReadThreadIdentities(path);
         std::remove(path);
@@ -241,14 +241,14 @@ namespace
         constexpr const char* path = "thread_name_fallback_test.log";
         std::remove(path);
 
-        if (!GMDG_Logger_Initialize(path)) return false;
+        if (!GMDG_LOG_INITIALIZE(path)) return false;
 
         std::thread thread([] {
-            LOG_INFO("TEST", "fallback test message");
+            GMDG_LOG_INFO("TEST", "fallback test message");
         });
         thread.join();
 
-        GMDG_Logger_Shutdown();
+        GMDG_LOG_SHUTDOWN();
 
         const auto identities = ReadThreadIdentities(path);
         std::remove(path);
@@ -268,11 +268,11 @@ namespace
         constexpr const char* path = "formatted_roundtrip_test.log";
         std::remove(path);
 
-        if (!GMDG_Logger_Initialize(path)) return false;
+        if (!GMDG_LOG_INITIALIZE(path)) return false;
 
-        LOG_INFO("TEST", "value={} name={} pi={:.2f}", 42, "abc", 3.14159);
+        GMDG_LOG_INFO("TEST", "value={} name={} pi={:.2f}", 42, "abc", 3.14159);
 
-        GMDG_Logger_Shutdown();
+        GMDG_LOG_SHUTDOWN();
 
         const std::string message = ReadRecordMessage(path, 0);
         std::remove(path);
@@ -288,11 +288,11 @@ namespace
         constexpr const char* path = "fast_path_roundtrip_test.log";
         std::remove(path);
 
-        if (!GMDG_Logger_Initialize(path)) return false;
+        if (!GMDG_LOG_INITIALIZE(path)) return false;
 
-        LOG_INFO("TEST", "int={} neg={} dbl={} str={} bool={} ch={}", 42, -7, 2.5, "hello", true, 'X');
+        GMDG_LOG_INFO("TEST", "int={} neg={} dbl={} str={} bool={} ch={}", 42, -7, 2.5, "hello", true, 'X');
 
-        GMDG_Logger_Shutdown();
+        GMDG_LOG_SHUTDOWN();
 
         const std::string message = ReadRecordMessage(path, 0);
         std::remove(path);
