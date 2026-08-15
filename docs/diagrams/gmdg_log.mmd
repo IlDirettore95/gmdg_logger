@@ -1,0 +1,24 @@
+flowchart TD
+    A["GMDG_LOG_DEBUG / GMDG_LOG_INFO / GMDG_LOG_WARNING / GMDG_LOG_ERROR(cat, fmt, ...)"] --> C["GMDGLogger::Log&lt;...&gt;(t_severity, cat, fmt, args...)"]
+    C --> D{"sizeof...(Args) == 0?"}
+    D -- Yes --> E["Use format string literal as-is"]
+    D -- No --> F["TryFastFormatImpl: write args into 1024B stack buffer"]
+    F --> G{"Fast path succeeded?"}
+    G -- No --> H["std::format_to_n fallback (safe truncation)"]
+    G -- Yes --> I["Buffer ready"]
+    H --> I
+    E --> J["GMDG_Log(t_severity, cat, catLen, msg, msgLen)"]
+    I --> J
+    J --> K["GMDG_ASSERT_WITH_MESSAGE: validate category/message pointers + lengths"]
+    K --> L{"Thread name set for this thread?"}
+    L -- No --> M["Auto-generate 'Thread-&lt;id&gt;' into thread_local buffer"]
+    L -- Yes --> N["Use existing thread_local name"]
+    M --> O["lock_guard(s_bufferMutex)"]
+    N --> O
+    O --> P{"Logger initialized? (s_file != null)"}
+    P -- No --> Q["Return silently: record dropped"]
+    P -- Yes --> R{"Record fits in front buffer? (8MB cap)"}
+    R -- No --> S["Increment s_droppedRecordCount (atomic, relaxed)"]
+    R -- Yes --> T["memcpy record header + thread name + category + message into front buffer; advance s_frontOffset"]
+    T --> U["Return: no file I/O on caller thread"]
+    U -.async.-> V["WriterThreadLoop (every 5ms): swap buffers, fwrite + fflush retired buffer to disk"]

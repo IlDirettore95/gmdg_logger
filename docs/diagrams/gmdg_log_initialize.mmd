@@ -1,0 +1,16 @@
+flowchart TD
+    A["GMDG_LOG_INITIALIZE(path)"] --> C["GMDG_Logger_Initialize(path)"]
+    C --> D["GMDG_ASSERT: path non-null"]
+    D --> E["lock_guard(s_mutex)"]
+    E --> F{"Already running (s_running)?"}
+    F -- Yes --> G["Assert fires; return GMDG_FALSE"]
+    F -- No --> H["Open file in 'ab+' mode"]
+    H --> I{"File is new (size == 0)?"}
+    I -- Yes --> J["Write GMDGLogFileHeader (magic, format version, record header size)"]
+    I -- No --> K["Seek to end of file"]
+    J --> K
+    K --> L["Reset s_frontIndex / s_frontOffset under lock_guard(s_bufferMutex)"]
+    L --> M["Reset s_droppedRecordCount"]
+    M --> N["s_running.store(true, release)"]
+    N --> O["Spawn s_writerThread running WriterThreadLoop"]
+    O --> P["Return GMDG_TRUE"]

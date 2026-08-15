@@ -1,0 +1,10 @@
+flowchart TD
+    A["GMDG_LOG_VALIDATE_FILE_HEADER(header)"] --> C["GMDG_Logger_Validate_File_Header(header)"]
+    C --> D["GMDG_ASSERT: header non-null"]
+    D --> E{"Magic matches LogMagic? (memcmp)"}
+    E -- No --> F["Return validation failure: bad magic"]
+    E -- Yes --> G{"FormatVersion == LogFormatVersion (2)?"}
+    G -- No --> H["Return validation failure: version mismatch"]
+    G -- Yes --> I{"RecordHeaderSize == sizeof(GMDGLogFileHeader)?"}
+    I -- No --> J["Return validation failure: size mismatch"]
+    I -- Yes --> K["Return GMDG_SUCCESS"]

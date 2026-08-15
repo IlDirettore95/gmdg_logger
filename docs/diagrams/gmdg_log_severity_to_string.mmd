@@ -1,0 +1,8 @@
+flowchart TD
+    A["GMDG_LOG_SEVERITY_TO_STRING(severity)"] --> C["GMDG_Logger_Severity_To_String(severity)"]
+    C --> D{"switch(severity)"}
+    D -- GMDG_LOG_DEBUG --> E["return \"DEBUG\""]
+    D -- GMDG_LOG_INFO --> F["return \"INFO\""]
+    D -- GMDG_LOG_WARNING --> G["return \"WARNING\""]
+    D -- GMDG_LOG_ERROR --> H["return \"ERROR\""]
+    D -- unknown value --> I["GMDG_ASSERT fires; return \"UNKNOWN\""]

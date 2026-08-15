@@ -1,0 +1,5 @@
+flowchart TD
+    A["GMDG_LOG_GET_DROPPED_RECORD_COUNT()"] --> C["GMDG_Logger_GetDroppedRecordCount()"]
+    C --> D["s_droppedRecordCount.load(memory_order_relaxed)"]
+    D --> E["Return count"]
+    E --> F["Count reflects records dropped by GMDG_Log when the front buffer was full (8MB cap)"]

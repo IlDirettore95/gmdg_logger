@@ -1,0 +1,8 @@
+flowchart TD
+    A["GMDG_LOG_SET_THREAD_NAME(name)"] --> C["GMDGLogger::SetThreadName(name)"]
+    C --> D["GMDG_SetThreadName(name.data(), size)"]
+    D --> E["GMDG_ASSERT_WITH_MESSAGE: validate name pointer + length"]
+    E --> F["Clamp length to GMDG_THREAD_NAME_MAX_LENGTH (31)"]
+    F --> G["memcpy into thread_local s_threadNameBuffer"]
+    G --> H["Set thread_local s_threadNameLength and s_threadNameIsSet = true"]
+    H --> I["Subsequent GMDG_Log calls on this thread reuse this name instead of auto-generating one"]

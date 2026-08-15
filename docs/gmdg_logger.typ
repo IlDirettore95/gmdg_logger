@@ -54,6 +54,25 @@
   inset: (x: 10pt, y: 8pt), radius: 3pt, width: 100%,
 )[#body]
 
+// One implementation-detail diagram, with a small caption underneath. Scaled to fit within a
+// single page's content height so tall flowcharts shrink instead of getting cropped at the page
+// boundary; short diagrams still fill the full available width, same as before.
+#let diagram-max-height = 19cm
+#let diagram-figure(path, caption) = align(center)[
+  #block(
+    fill: white, stroke: 0.6pt + accent.lighten(20%), inset: 8pt, radius: 3pt,
+    width: 100%, above: 10pt, below: 4pt, breakable: false,
+  )[
+    #layout(size => {
+      let natural = measure(image(path))
+      let scale = calc.min(size.width / natural.width, diagram-max-height / natural.height)
+      image(path, width: natural.width * scale, height: natural.height * scale)
+    })
+  ]
+  #text(font: head-font, size: 8.5pt, fill: rgb("#777777"))[#caption]
+  #v(6pt)
+]
+
 // One function/macro/type per entry.
 #let api-entry(kind, signature, body) = block(
   width: 100%,
@@ -119,7 +138,8 @@
 = Public API <public-api>
 
 `gmdg_logger` exposes two layers: a C API (`gmdg_logger.h`, always compiled) and an optional C++
-convenience layer of macros on top (`gmdg_logger.hpp`, `namespace GMDGLogger`).
+convenience layer of macros on top (`gmdg_logger.hpp`, `namespace GMDGLogger`). Internal
+control-flow diagrams for the entry points below are in @impl-details.
 
 == API reference — C API
 
@@ -167,18 +187,21 @@ convenience layer of macros on top (`gmdg_logger.hpp`, `namespace GMDGLogger`).
 
 #api-entry("function", "GMDGBool GMDG_Logger_Initialize(const char* t_path);")[
   Opens (or creates) the log file at `t_path` for the process, writing a `GMDGLogFileHeader` if the
-  file is new, and starts the background writer thread. Not reentrant.
+  file is new, and starts the background writer thread. Not reentrant. See @impl-initialize for
+  the internal control flow.
 ]
 
 #api-entry("function", "void GMDG_Logger_Shutdown();")[
-  Stops the background writer thread and closes the file.
+  Stops the background writer thread and closes the file. See @impl-shutdown for the internal
+  control flow.
 ]
 
 #api-entry(
   "function",
   "void GMDG_Log(\n    uint32_t t_severity,\n    const char* t_category, uint32_t t_categoryLength,\n    const char* t_message, uint32_t t_messageLength);",
 )[
-  Appends one record. The underlying entry point every `GMDG_LOG_*` macro funnels through.
+  Appends one record. The underlying entry point every `GMDG_LOG_*` macro funnels through. See
+  @impl-log for the internal control flow.
 ]
 
 #api-entry(
@@ -187,12 +210,12 @@ convenience layer of macros on top (`gmdg_logger.hpp`, `namespace GMDGLogger`).
 )[
   Tags the calling thread with a name; every subsequent `GMDG_Log` call on this thread carries it
   until changed. Thread-local. `t_nameLength` beyond `GMDG_THREAD_NAME_MAX_LENGTH` is silently
-  truncated.
+  truncated. See @impl-set-thread-name for the internal control flow.
 ]
 
 #api-entry("function", "const char* GMDG_Logger_Severity_To_String(GMDGLogSeverity t_severity);")[
   Returns a static string for one of the four severities (`"DEBUG"`, `"INFO"`, `"WARNING"`,
-  `"ERROR"`).
+  `"ERROR"`). See @impl-severity-to-string for the internal control flow.
 ]
 
 #api-entry(
@@ -200,12 +223,12 @@ convenience layer of macros on top (`gmdg_logger.hpp`, `namespace GMDGLogger`).
   "GMDGLogFileValidationResult GMDG_Logger_Validate_File_Header(\n    const GMDGLogFileHeader* t_header);",
 )[
   Validates the magic bytes, format version, and header size of a `GMDGLogFileHeader` read from
-  disk.
+  disk. See @impl-validate-file-header for the internal control flow.
 ]
 
 #api-entry("function", "uint64_t GMDG_Logger_GetDroppedRecordCount(void);")[
   Number of records dropped so far because the async write buffer was full at the moment
-  `GMDG_Log` was called.
+  `GMDG_Log` was called. See @impl-get-dropped-record-count for the internal control flow.
 ]
 
 == API reference — C++ convenience layer
@@ -237,35 +260,38 @@ Only compiled when `GMDG_LOGGER_ENABLED` is defined before `#include "gmdg_logge
   "GMDG_LOG_DEBUG(t_category, t_format, ...)\nGMDG_LOG_INFO(t_category, t_format, ...)\nGMDG_LOG_WARNING(t_category, t_format, ...)\nGMDG_LOG_ERROR(t_category, t_format, ...)",
 )[
   Call `GMDGLogger::Log` with the corresponding `GMDGLogSeverity`. Compile to nothing when
-  `GMDG_LOGGER_ENABLED` is undefined.
+  `GMDG_LOGGER_ENABLED` is undefined. See @impl-log for the internal control flow.
 ]
 
 #api-entry("macro", "GMDG_LOG_SET_THREAD_NAME(t_name)")[
   Calls `GMDGLogger::SetThreadName`. Compiles to nothing when `GMDG_LOGGER_ENABLED` is undefined.
+  See @impl-set-thread-name for the internal control flow.
 ]
 
 #api-entry("macro", "GMDG_LOG_INITIALIZE(t_path)")[
   Calls `GMDG_Logger_Initialize`. Compiles to `GMDG_TRUE` when `GMDG_LOGGER_ENABLED` is undefined,
   so `if (!GMDG_LOG_INITIALIZE(...))`-style call sites still compile and never spuriously fail just
-  because logging is compiled out.
+  because logging is compiled out. See @impl-initialize for the internal control flow.
 ]
 
 #api-entry("macro", "GMDG_LOG_SHUTDOWN()")[
-  Calls `GMDG_Logger_Shutdown`. Compiles to nothing when `GMDG_LOGGER_ENABLED` is undefined.
+  Calls `GMDG_Logger_Shutdown`. Compiles to nothing when `GMDG_LOGGER_ENABLED` is undefined. See
+  @impl-shutdown for the internal control flow.
 ]
 
 #api-entry("macro", "GMDG_LOG_SEVERITY_TO_STRING(t_severity)")[
   Calls `GMDG_Logger_Severity_To_String`. Compiles to `""` when `GMDG_LOGGER_ENABLED` is undefined.
+  See @impl-severity-to-string for the internal control flow.
 ]
 
 #api-entry("macro", "GMDG_LOG_VALIDATE_FILE_HEADER(t_header)")[
   Calls `GMDG_Logger_Validate_File_Header`. Compiles to `GMDG_UNKNOWN` when `GMDG_LOGGER_ENABLED` is
-  undefined.
+  undefined. See @impl-validate-file-header for the internal control flow.
 ]
 
 #api-entry("macro", "GMDG_LOG_GET_DROPPED_RECORD_COUNT()")[
   Calls `GMDG_Logger_GetDroppedRecordCount`. Compiles to `0` when `GMDG_LOGGER_ENABLED` is
-  undefined.
+  undefined. See @impl-get-dropped-record-count for the internal control flow.
 ]
 
 == Configuration <configuration>
@@ -348,6 +374,92 @@ test/bench/GUI executables.
   `target_link_libraries()` — manually add `gmdg_logger/include` to your own target's include
   directories.
 + Link against, or load, the built DLL directly.
+
+// ===========================================================================
+= Public API Implementation Details <impl-details>
+
+The diagrams below trace what actually happens, step by step, when each entry point in @public-api
+is called. They're generated from Mermaid flowcharts kept alongside this document at
+`docs/diagrams/*.mmd`, one per entry point — except the four severity macros, which
+share a single flowchart below since their internals are identical apart from which
+`GMDGLogSeverity` is threaded through.
+
+== Initializing the logger <impl-initialize>
+
+`GMDG_Logger_Initialize` opens the file in append mode, writes a `GMDGLogFileHeader` if the file is
+new, resets the internal front-buffer state under `s_bufferMutex`, resets the dropped-record
+counter, and spawns the background writer thread.
+
+#diagram-figure(
+  "diagrams/gmdg_log_initialize.png",
+  [`GMDG_LOG_INITIALIZE` → `GMDG_Logger_Initialize`],
+)
+
+== Shutting down the logger <impl-shutdown>
+
+`GMDG_Logger_Shutdown` flags the writer thread to stop, wakes it immediately, joins it — letting it
+perform one final buffer swap and flush to disk — then closes the file. The caller must guarantee
+no other thread is still calling `GMDG_Log` while this runs.
+
+#diagram-figure(
+  "diagrams/gmdg_log_shutdown.png",
+  [`GMDG_LOG_SHUTDOWN` → `GMDG_Logger_Shutdown`],
+)
+
+== Logging a record <impl-log>
+
+`GMDG_LOG_DEBUG`/`_INFO`/`_WARNING`/`_ERROR` all funnel through the same path: format the message
+into the 1024-byte stack buffer (falling back to `std::format_to_n` if the fast path can't handle
+it), resolve the calling thread's name (or auto-generate one the first time that thread logs), then
+take `s_bufferMutex` to copy the record into the front buffer — or drop it and bump the
+dropped-record counter if the front buffer's 8MB cap is exceeded. No file I/O happens on the
+caller's thread; a background `WriterThreadLoop` swaps and flushes buffers to disk roughly every
+5ms. The four macros are structurally identical, differing only in which severity value is threaded
+through, so a single flowchart below covers all four.
+
+#diagram-figure("diagrams/gmdg_log.png", [`GMDG_LOG_DEBUG` / `GMDG_LOG_INFO` / `GMDG_LOG_WARNING` / `GMDG_LOG_ERROR`])
+
+== Naming a thread <impl-set-thread-name>
+
+`GMDG_SetThreadName` validates the name pointer/length, clamps it to
+`GMDG_THREAD_NAME_MAX_LENGTH` (31 bytes), and copies it into a `thread_local` buffer that every
+subsequent `GMDG_Log` call on that thread reads instead of auto-generating a name.
+
+#diagram-figure(
+  "diagrams/gmdg_log_set_thread_name.png",
+  [`GMDG_LOG_SET_THREAD_NAME` → `GMDG_SetThreadName`],
+)
+
+== Severity to string <impl-severity-to-string>
+
+`GMDG_Logger_Severity_To_String` is a plain `switch` over the four `GMDGLogSeverity` values; an
+unrecognized value asserts and returns `"UNKNOWN"`.
+
+#diagram-figure(
+  "diagrams/gmdg_log_severity_to_string.png",
+  [`GMDG_LOG_SEVERITY_TO_STRING` → `GMDG_Logger_Severity_To_String`],
+)
+
+== Validating a file header <impl-validate-file-header>
+
+`GMDG_Logger_Validate_File_Header` checks the magic bytes, then the format version, then the
+record-header size, in that order, returning the first mismatch it finds — or `GMDG_SUCCESS` if all
+three check out.
+
+#diagram-figure(
+  "diagrams/gmdg_log_validate_file_header.png",
+  [`GMDG_LOG_VALIDATE_FILE_HEADER` → `GMDG_Logger_Validate_File_Header`],
+)
+
+== Counting dropped records <impl-get-dropped-record-count>
+
+`GMDG_Logger_GetDroppedRecordCount` is a relaxed atomic load of the counter incremented whenever
+`GMDG_Log` finds the front buffer full (see @impl-log).
+
+#diagram-figure(
+  "diagrams/gmdg_log_get_dropped_record_count.png",
+  [`GMDG_LOG_GET_DROPPED_RECORD_COUNT` → `GMDG_Logger_GetDroppedRecordCount`],
+)
 
 // ===========================================================================
 = Dependencies

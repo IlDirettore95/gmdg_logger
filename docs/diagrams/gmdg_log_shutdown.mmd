@@ -1,0 +1,9 @@
+flowchart TD
+    A["GMDG_LOG_SHUTDOWN()"] --> C["GMDG_Logger_Shutdown()"]
+    C --> D["s_running.store(false, release)"]
+    D --> E["Notify s_wakeCv (wakes writer thread early)"]
+    E --> F["Join s_writerThread"]
+    F --> G["WriterThreadLoop does one final swap + fwrite/fflush pass before exiting"]
+    G --> H["lock_guard(s_mutex)"]
+    H --> I["Close s_file"]
+    I --> J["Note: caller must ensure no concurrent GMDG_Log calls on other threads during shutdown"]
